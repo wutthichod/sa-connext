@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package users;
+
+option go_package = "shared/proto/user;user";
+
+service UserService {
+    rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
+    rpc GetUser(GetUserByIdRequest) returns (GetUserByIdResponse)
+}
+
+message CreateUserRequest {
+    string username = 1;
+    string password = 2;
+    Contact contact = 3;
+    Education education = 4;
+    string jobTitle = 5;
+    repeat string intersets = 6;
+
+}
+
+message CreateUserResponse {
+    bool success = 1;
+}
+
+message Contact {
+    string email = 1;
+    string phone = 1;
+}
+
+message Education {
+    string university = 1;
+    string major = 2;
+}
