@@ -2,8 +2,11 @@ package service
 
 import (
 	"context"
+	"log"
 
 	"github.com/wutthichod/sa-connext/services/user-service/internal/repository"
+	"github.com/wutthichod/sa-connext/shared/contracts"
+	"github.com/wutthichod/sa-connext/shared/messaging"
 )
 
 type Service interface {
@@ -19,5 +22,21 @@ func NewService(repo repository.Repository) Service {
 }
 
 func (s *service) CreateUser(ctx context.Context, name string) error {
-	return s.repo.Createuser(ctx, name)
+	errRes := s.repo.Createuser(ctx, name);
+	rb, err := messaging.NewRabbitMQ("");
+	if err != nil {
+		log.Fatalf("Failed to connect to RabbitMQ: %v", err)
+	}
+	if errRes != nil {
+		event := contracts.EmailEvent{
+		To:      "brightka.ceo@gmail.com",
+		Subject: "Welcome!",
+		Body:    "Hi there, thanks for signing up!",
+		}
+		
+		if err := rb.PublishMessage(ctx,"notification.exchange","notification.email",event); err != nil {
+				log.Printf("Failed to publish email event: %v", err)
+			}
+	}
+	return errRes; 
 }
