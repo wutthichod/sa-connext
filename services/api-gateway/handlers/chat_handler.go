@@ -26,12 +26,12 @@ func (h *ChatHandler) CreateChat(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid JSON format")
 	}
 
-	if req.UserID == "" || req.RecipientID == "" {
-		return fiber.NewError(fiber.StatusBadRequest, "UserID and RecipientID are required")
+	if req.SenderID == "" || req.RecipientID == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "SenderID and RecipientID are required")
 	}
 
 	res, err := h.ChatClient.CreateChat(c.Context(), &pb.CreateChatRequest{
-		UserId:      req.UserID,
+		SenderId:    req.SenderID,
 		RecipientId: req.RecipientID,
 	})
 	if err != nil {
@@ -47,15 +47,14 @@ func (h *ChatHandler) SendMessage(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid JSON format")
 	}
 
-	if req.UserID == "" || req.RecipientID == "" || req.Message == "" {
-		return fiber.NewError(fiber.StatusBadRequest, "UserID, RecipientID, and Message are required")
+	if req.SenderID == "" || req.RecipientID == "" || req.Message == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "SenderID, RecipientID, and Message are required")
 	}
 
-	// Call ChatService via gRPC
 	_, err := h.ChatClient.SendMessage(c.Context(), &pb.SendMessageRequest{
-		FromUserId: req.UserID,
-		ToUserId:   req.RecipientID,
-		Message:    req.Message,
+		SenderId:    req.SenderID,
+		RecipientId: req.RecipientID,
+		Message:     req.Message,
 	})
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
@@ -64,7 +63,6 @@ func (h *ChatHandler) SendMessage(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusOK)
 }
 
-// ListenRabbit runs in a background goroutine to relay RabbitMQ messages to WebSocket clients
 func (h *ChatHandler) ListenRabbit() {
 	err := h.Queue.Start()
 	if err != nil {

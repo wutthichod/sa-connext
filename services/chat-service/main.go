@@ -5,46 +5,45 @@ import (
 	"log"
 	"net"
 
-	"github.com/wutthichod/sa-connext/services/chat-service/database"
+	"github.com/wutthichod/sa-connext/services/chat-service/internal/service"
+	"github.com/wutthichod/sa-connext/services/chat-service/package/config"
+	"github.com/wutthichod/sa-connext/services/chat-service/package/database"
 	"github.com/wutthichod/sa-connext/shared/messaging"
 	pb "github.com/wutthichod/sa-connext/shared/proto/chat"
 	"google.golang.org/grpc"
 )
 
-var (
-	GrpcAddr    = ":9093"
-	mongoURI    = ""
-	rabbitMqURI = "amqp://guest:guest@localhost:5672/"
-)
-
 func main() {
-	lis, err := net.Listen("tcp", GrpcAddr)
+
+	config := config.LoadConfig()
+
+	lis, err := net.Listen("tcp", config.Addr)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
 	ctx := context.Background()
-	mongoStore := database.NewMongoDB(ctx, mongoURI)
+	mongoStore := database.NewMongoDB(ctx, config.MongoURI)
 	db := mongoStore.DB()
 
 	// RabbitMQ connection
-	rmq, err := messaging.NewRabbitMQ(rabbitMqURI)
+	rmq, err := messaging.NewRabbitMQ(config.RabbitURI)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer rmq.Close()
 
 	// Setup exchange + queue for gateway
-	_, err = rmq.SetupQueue("gateway_chat", "chat", "direct", "chat.gateway", true, nil)
+	_, err = rmq.SetupQueue("chat_gateway", "chat", "direct", "chat.gateway", true, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
 	// Start gRPC server
 	chatServer := grpc.NewServer()
-	chatService := NewChatService(db, rmq)
+	chatService := service.NewChatService(db, rmq)
 	pb.RegisterChatServiceServer(chatServer, chatService)
 
-	log.Println("Server listening on ", GrpcAddr)
+	log.Println("Server listening on ", config.Addr)
 	if err := chatServer.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}

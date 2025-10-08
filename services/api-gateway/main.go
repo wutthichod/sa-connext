@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	rabbitMqURI = "amqp://guest:guest@localhost:5672/"
+	rabbitMqURI = "amqps://nsemvrni:JFrEKtzZLj9jmmwXKZ_VSNZoP5M6u8ON@gorilla.lmq.cloudamqp.com/nsemvrni"
 )
 
 func main() {
@@ -29,7 +29,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	queueName := "chat_messages"
+	queueName := "gateway_chat"
 	consumer := messaging.NewQueueConsumer(rabbit, connMgr, queueName)
 
 	// Start consuming messages in a separate goroutine

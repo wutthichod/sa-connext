@@ -11,19 +11,19 @@ service ChatService {
 
 
 message CreateChatRequest {
-    string user_id = 1;
+    string sender_id = 1;
     string recipient_id = 2;
 }
 
 message CreateChatResponse {
-    string user_id = 1;
+    string sender_id = 1;
     string recipient_id = 2;
     string chat_id = 3;      
 }
 
 message SendMessageRequest {
-    string from_user_id = 1;
-    string to_user_id = 2;
+    string sender_id = 1;
+    string recipient_id = 2;
     string message = 3;
 }
 

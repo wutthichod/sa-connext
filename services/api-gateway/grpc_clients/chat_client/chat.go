@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	chatServiceAddr = "localhost:9094" // default chat service address
+	chatServiceAddr = "localhost:9093" // default chat service address
 )
 
 type ChatServiceClient struct {

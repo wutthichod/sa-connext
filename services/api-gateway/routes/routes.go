@@ -23,5 +23,12 @@ func RegisterChatRoutes(app *fiber.App, h *handlers.ChatHandler) {
 
 		h.ConnManager.Add(userID, c)
 		defer h.ConnManager.Remove(userID)
+
+		// Keep connection alive and detect disconnect
+		for {
+			if _, _, err := c.ReadMessage(); err != nil {
+				break
+			}
+		}
 	}))
 }
