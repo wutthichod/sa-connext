@@ -1,0 +1,28 @@
+services:
+  postgres_new:
+    image: postgres:latest
+    container_name: postgres_new
+    environment:
+      POSTGRES_DB: user
+      POSTGRES_USER: newuser
+      POSTGRES_PASSWORD: newpassword
+    volumes:
+      - postgres_data_new:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"   # 👈 change external port to 5433
+    restart: unless-stopped
+
+  pgadmin_new:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin_new
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin2@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin2
+    ports:
+      - "5051:80"     # 👈 change external port to 5051
+    depends_on:
+      - postgres_new
+    restart: unless-stopped
+
+volumes:
+  postgres_data_new:
