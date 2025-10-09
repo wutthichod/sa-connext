@@ -16,7 +16,7 @@ import (
 
 func main() {
 
-	godotenv.Load()
+	godotenv.Load("../.env")
 	config := config.LoadConfig()
 
 	lis, err := net.Listen("tcp", config.Addr)
