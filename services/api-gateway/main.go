@@ -15,7 +15,7 @@ import (
 
 func main() {
 
-	godotenv.Load()
+	godotenv.Load("./.env") // ./ = โฟลเดอร์เดียวกับ main.go
 	config := config.LoadConfig()
 
 	app := fiber.New()
