@@ -23,9 +23,7 @@ func NewGRPCHandler(server *grpc.Server, service service.Service) *gRPCHandler {
 
 func (h *gRPCHandler) CreateUser(ctx context.Context, req *pb.CreateUserRequest) (*pb.CreateUserResponse, error) {
 
-	name := req.GetUsername()
-
-	if err := h.service.CreateUser(ctx, name); err != nil {
+	if err := h.service.CreateUser(ctx, req); err != nil {
 		return &pb.CreateUserResponse{
 			Success: false,
 		}, err

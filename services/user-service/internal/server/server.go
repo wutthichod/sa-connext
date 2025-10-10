@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"log"
 	"net"
 
@@ -23,9 +22,10 @@ func InitServer(cfg config.Config) error {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
-	ctx := context.Background()
-	mongoStore := database.NewMongoDB(ctx)
-	db := mongoStore.DB()
+	db, err := database.InitDatabase(cfg.Database())
+	if err != nil {
+		log.Fatalf("failed to connect to the database: %v", err)
+	}
 
 	server := grpc.NewServer()
 	repo := repository.NewRepo(db)
@@ -33,9 +33,9 @@ func InitServer(cfg config.Config) error {
 
 	handler.NewGRPCHandler(server, service)
 
-	if err = service.CreateUser(ctx, "brightka"); err != nil {
-		log.Fatalf("failed to create user: %v", err)
-	}
+	// if err = service.CreateUser(ctx, "brightka"); err != nil {
+	// 	log.Fatalf("failed to create user: %v", err)
+	// }
 
 	log.Printf("Server listening on: %v", grpcAddr)
 	// if err := server.Serve(lis); err != nil {
