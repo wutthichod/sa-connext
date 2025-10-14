@@ -12,6 +12,7 @@ import (
 type Config interface {
 	App() App
 	Database() Database
+	RabbitMQ() RabbitMQ
 	String() string
 }
 
@@ -24,13 +25,18 @@ type App struct {
 	Port string `validate:"required"`
 }
 
+type RabbitMQ struct {
+	URI string `validate:"required"`
+}
 type config struct {
 	AppCfg         App
-	DatabaseCfg Database
+	DatabaseCfg    Database
+	RabbitMQCfg    RabbitMQ
 }
 
 func (c *config) App() App      { return c.AppCfg }
 func (c *config) Database() Database { return c.DatabaseCfg }
+func (c *config) RabbitMQ() RabbitMQ { return c.RabbitMQCfg }
 
 func (c *config) String() string {
 	jsonBytes, err := json.MarshalIndent(c, "", "  ")
@@ -48,6 +54,9 @@ func InitConfig() (Config, error) {
 		DatabaseCfg: Database{
 			DSN:  getEnv("DATABASE_DSN", ""),
 			Name: getEnv("DATABASE_NAME", ""),
+		},
+		RabbitMQCfg: RabbitMQ{
+			URI: getEnv("RABBITMQ_URI", ""),
 		},
 	}
 
