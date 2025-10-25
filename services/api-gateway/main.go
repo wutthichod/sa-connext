@@ -24,8 +24,8 @@ func main() {
 	connMgr := messaging.NewConnectionManager()
 
 	// Create gRPC Client
-	chatClient, _ := chat_client.NewChatServiceClient()
-	userClient, _ := user_client.NewUserServiceClient()
+	chatClient, _ := chat_client.NewChatServiceClient(config)
+	userClient, _ := user_client.NewUserServiceClient(config)
 	// WS Connection Manager
 
 	// Initialize QueueConsumer
@@ -53,5 +53,5 @@ func main() {
 		chatHandler.ListenRabbit()
 	}()
 
-	log.Fatal(app.Listen(config.App().Port))
+	log.Fatal(app.Listen(config.App().Gateway))
 }

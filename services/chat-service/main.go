@@ -22,7 +22,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	lis, err := net.Listen("tcp", config.App().Port)
+	lis, err := net.Listen("tcp", config.App().Chat)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
@@ -52,7 +52,7 @@ func main() {
 	chatService := service.NewChatService(db, rmq)
 	pb.RegisterChatServiceServer(chatServer, chatService)
 
-	log.Println("Server listening on ", config.App().Port)
+	log.Println("Server listening on ", config.App().Chat)
 	if err := chatServer.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}

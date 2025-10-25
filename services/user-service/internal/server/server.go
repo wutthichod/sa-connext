@@ -9,13 +9,14 @@ import (
 	"github.com/wutthichod/sa-connext/services/user-service/internal/service"
 	"github.com/wutthichod/sa-connext/services/user-service/pkg/database"
 	"github.com/wutthichod/sa-connext/shared/config"
+	"github.com/wutthichod/sa-connext/shared/messaging"
 
 	"google.golang.org/grpc"
 )
 
 func InitServer(cfg config.Config) error {
 
-	grpcAddr := cfg.App().Port
+	grpcAddr := cfg.App().User
 
 	lis, err := net.Listen("tcp", grpcAddr)
 	if err != nil {
@@ -26,10 +27,15 @@ func InitServer(cfg config.Config) error {
 	if err != nil {
 		log.Fatalf("failed to connect to the database: %v", err)
 	}
+	rb, err := messaging.NewRabbitMQ(cfg.RABBITMQ().URI)
+	if err != nil {
+		log.Fatalf("failed to connect to RabbitMQ: %v", err)
+	}
+	defer rb.Close()
 
 	server := grpc.NewServer()
 	repo := repository.NewRepo(db)
-	service := service.NewService(repo, cfg)
+	service := service.NewService(repo, rb, cfg)
 
 	handler.NewGRPCHandler(server, service)
 

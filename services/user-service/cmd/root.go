@@ -21,7 +21,7 @@ var RootCmd = &cobra.Command{
 	Short: "A brief description of your application",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 
-		_ = godotenv.Load()
+		_ = godotenv.Load("./.env")
 
 		cfg, err := config.InitConfig()
 		if err != nil {

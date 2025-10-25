@@ -2,16 +2,12 @@ package user_client
 
 import (
 	"context"
-	"os"
 
+	"github.com/wutthichod/sa-connext/shared/config"
 	pb "github.com/wutthichod/sa-connext/shared/proto/user"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-)
-
-var (
-	userServiceAddr = "localhost:9094"
 )
 
 type UserServiceClient struct {
@@ -19,13 +15,9 @@ type UserServiceClient struct {
 	conn   *grpc.ClientConn
 }
 
-func NewUserServiceClient() (*UserServiceClient, error) {
-	UserServiceUrl := os.Getenv("User_SERVICE_URL")
-	if UserServiceUrl == "" {
-		UserServiceUrl = userServiceAddr
-	}
+func NewUserServiceClient(config config.Config) (*UserServiceClient, error) {
 
-	conn, err := grpc.NewClient(UserServiceUrl, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(config.App().User, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
 	}
@@ -45,6 +37,6 @@ func (c *UserServiceClient) Close() {
 	}
 }
 
-func (ds *UserServiceClient) CreateUser(ctx context.Context, req *pb.CreateUserRequest) (*pb.CreateUserResponse, error) {
-	return ds.Client.CreateUser(ctx, req)
+func (s *UserServiceClient) CreateUser(ctx context.Context, req *pb.CreateUserRequest) (*pb.CreateUserResponse, error) {
+	return s.Client.CreateUser(ctx, req)
 }

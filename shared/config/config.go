@@ -14,11 +14,17 @@ type Config interface {
 	RABBITMQ() RABBITMQ
 	Database() Database
 	JWT() JWT
+	Notification() Notification
 	String() string
 }
 
 type App struct {
-	Port string
+	Gateway      string
+	User         string
+	Chat         string
+	Notification string
+	Event        string
+	Organizer    string
 }
 
 type RABBITMQ struct {
@@ -34,17 +40,24 @@ type JWT struct {
 	Token string
 }
 
+type Notification struct {
+	Email   string
+	EmailPW string
+}
+
 type config struct {
 	AppCfg      App
 	DatabaseCfg Database
 	RabbitMqCfg RABBITMQ
 	JwtCfg      JWT
+	NotiCfg     Notification
 }
 
-func (c *config) App() App           { return c.AppCfg }
-func (c *config) Database() Database { return c.DatabaseCfg }
-func (c *config) JWT() JWT           { return c.JwtCfg }
-func (c *config) RABBITMQ() RABBITMQ { return c.RabbitMqCfg }
+func (c *config) App() App                   { return c.AppCfg }
+func (c *config) Database() Database         { return c.DatabaseCfg }
+func (c *config) JWT() JWT                   { return c.JwtCfg }
+func (c *config) RABBITMQ() RABBITMQ         { return c.RabbitMqCfg }
+func (c *config) Notification() Notification { return c.NotiCfg }
 
 func (c *config) String() string {
 	jsonBytes, err := json.MarshalIndent(c, "", "  ")
@@ -57,7 +70,12 @@ func (c *config) String() string {
 func InitConfig() (Config, error) {
 	cfg := &config{
 		AppCfg: App{
-			Port: getEnv("ADDR", ""),
+			Gateway:      getEnv("GATEWAY_ADDR", ""),
+			User:         getEnv("USER_ADDR", ""),
+			Chat:         getEnv("CHAT_ADDR", ""),
+			Notification: getEnv("NOTI_ADDR", ""),
+			Event:        getEnv("EVENT_ADDR", ""),
+			Organizer:    getEnv("ORGANIZER_ADDR", ""),
 		},
 		DatabaseCfg: Database{
 			DSN:  getEnv("DATABASE_DSN", ""),
@@ -68,6 +86,10 @@ func InitConfig() (Config, error) {
 		},
 		RabbitMqCfg: RABBITMQ{
 			URI: getEnv("RABBITMQ_URI", ""),
+		},
+		NotiCfg: Notification{
+			Email:   getEnv("EMAIL", ""),
+			EmailPW: getEnv("EMAIL_PW", ""),
 		},
 	}
 
