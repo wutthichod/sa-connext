@@ -1,0 +1,41 @@
+package repository
+
+import (
+	"context"
+
+	"github.com/wutthichod/sa-connext/services/event-service/internal/models"
+	"gorm.io/gorm"
+)
+
+// EventRepositoryInterface defines the methods for database interaction
+type EventRepositoryInterface interface {
+	Create(ctx context.Context, event *models.Event) error
+	GetByID(ctx context.Context, id uint) (*models.Event, error)
+}
+
+// eventRepository implements the interface using GORM
+type eventRepository struct {
+	db *gorm.DB
+}
+
+// NewEventRepository creates a new repository instance
+func NewEventRepository(db *gorm.DB) EventRepositoryInterface {
+	return &eventRepository{db: db}
+}
+
+// Create inserts a new event record into the database
+func (r *eventRepository) Create(ctx context.Context, event *models.Event) error {
+	// Use WithContext to pass the context to GORM for timeout/cancellation
+	return r.db.WithContext(ctx).Create(event).Error
+}
+
+// GetByID finds a single event by its ID
+func (r *eventRepository) GetByID(ctx context.Context, id uint) (*models.Event, error) {
+	var event models.Event
+	// GORM will return gorm.ErrRecordNotFound if no record is found
+	err := r.db.WithContext(ctx).First(&event, "id = ?", id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &event, nil
+}

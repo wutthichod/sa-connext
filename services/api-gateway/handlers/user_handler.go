@@ -5,16 +5,16 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/wutthichod/sa-connext/services/api-gateway/contracts"
-	"github.com/wutthichod/sa-connext/services/api-gateway/grpc_clients/user_client"
+	"github.com/wutthichod/sa-connext/services/api-gateway/clients"
+	"github.com/wutthichod/sa-connext/services/api-gateway/dto"
 	pb "github.com/wutthichod/sa-connext/shared/proto/user"
 )
 
 type UserHandler struct {
-	UserClient *user_client.UserServiceClient
+	UserClient *clients.UserServiceClient
 }
 
-func NewUserHandler(uc *user_client.UserServiceClient) *UserHandler {
+func NewUserHandler(uc *clients.UserServiceClient) *UserHandler {
 	return &UserHandler{UserClient: uc}
 }
 
@@ -26,7 +26,7 @@ func (h *UserHandler) RegisterRoutes(app *fiber.App) {
 
 func (h *UserHandler) Register(c *fiber.Ctx) error {
 	// Parse incoming JSON
-	var req contracts.RegisterRequest
+	var req dto.RegisterRequest
 	if err := c.BodyParser(&req); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid JSON format")
 	}
@@ -67,7 +67,7 @@ func (h *UserHandler) Register(c *fiber.Ctx) error {
 }
 
 func (h *UserHandler) Login(c *fiber.Ctx) error {
-	var req contracts.LoginRequest
+	var req dto.LoginRequest
 	if err := c.BodyParser(&req); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid JSON format")
 	}

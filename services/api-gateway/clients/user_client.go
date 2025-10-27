@@ -1,4 +1,4 @@
-package user_client
+package clients
 
 import (
 	"context"
@@ -37,6 +37,6 @@ func (c *UserServiceClient) Close() {
 	}
 }
 
-func (s *UserServiceClient) CreateUser(ctx context.Context, req *pb.CreateUserRequest) (*pb.CreateUserResponse, error) {
-	return s.Client.CreateUser(ctx, req)
+func (c *UserServiceClient) CreateUser(ctx context.Context, req *pb.CreateUserRequest) (*pb.CreateUserResponse, error) {
+	return c.Client.CreateUser(ctx, req)
 }

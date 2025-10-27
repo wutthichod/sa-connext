@@ -1,4 +1,4 @@
-package contracts
+package dto
 
 type CreateChatRequest struct {
 	SenderID    string `json:"sender_id"`

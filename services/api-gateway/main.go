@@ -5,8 +5,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
-	"github.com/wutthichod/sa-connext/services/api-gateway/grpc_clients/chat_client"
-	"github.com/wutthichod/sa-connext/services/api-gateway/grpc_clients/user_client"
+	"github.com/wutthichod/sa-connext/services/api-gateway/clients"
 	"github.com/wutthichod/sa-connext/services/api-gateway/handlers"
 	"github.com/wutthichod/sa-connext/shared/config"
 	"github.com/wutthichod/sa-connext/shared/messaging"
@@ -24,8 +23,9 @@ func main() {
 	connMgr := messaging.NewConnectionManager()
 
 	// Create gRPC Client
-	chatClient, _ := chat_client.NewChatServiceClient(config)
-	userClient, _ := user_client.NewUserServiceClient(config)
+	chatClient, _ := clients.NewChatServiceClient(config)
+	userClient, _ := clients.NewUserServiceClient(config)
+	eventClient := clients.NewEventServiceClient(config.App().Event)
 	// WS Connection Manager
 
 	// Initialize QueueConsumer
@@ -44,10 +44,12 @@ func main() {
 	// Initialize ChatHandler
 	chatHandler := handlers.NewChatHandler(chatClient, connMgr, consumer, &config)
 	userHandler := handlers.NewUserHandler(userClient)
+	eventHandler := handlers.NewEventHandler(eventClient)
 
 	// Register Routes
 	chatHandler.RegisterRoutes(app)
 	userHandler.RegisterRoutes(app)
+	eventHandler.RegisterRoutes(app)
 
 	go func() {
 		chatHandler.ListenRabbit()

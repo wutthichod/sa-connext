@@ -1,4 +1,4 @@
-package contracts
+package dto
 
 type RegisterRequest struct {
 	Username  string    `json:"username" validate:"required,min=2,max=50"`

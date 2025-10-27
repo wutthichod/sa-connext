@@ -5,23 +5,23 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/websocket/v2"
-	"github.com/wutthichod/sa-connext/services/api-gateway/contracts"
-	"github.com/wutthichod/sa-connext/services/api-gateway/grpc_clients/chat_client"
-	middlewares "github.com/wutthichod/sa-connext/services/api-gateway/pkg/middleware"
+	"github.com/wutthichod/sa-connext/services/api-gateway/clients"
+	"github.com/wutthichod/sa-connext/services/api-gateway/dto"
+	"github.com/wutthichod/sa-connext/services/api-gateway/pkg/middlewares"
 	"github.com/wutthichod/sa-connext/shared/config"
 	"github.com/wutthichod/sa-connext/shared/messaging"
 	pb "github.com/wutthichod/sa-connext/shared/proto/chat"
 )
 
 type ChatHandler struct {
-	ChatClient  *chat_client.ChatServiceClient
+	ChatClient  *clients.ChatServiceClient
 	ConnManager *messaging.ConnectionManager
 	Queue       *messaging.QueueConsumer
 	Config      *config.Config
 }
 
 // Constructor
-func NewChatHandler(client *chat_client.ChatServiceClient, connManager *messaging.ConnectionManager, queue *messaging.QueueConsumer, config *config.Config) *ChatHandler {
+func NewChatHandler(client *clients.ChatServiceClient, connManager *messaging.ConnectionManager, queue *messaging.QueueConsumer, config *config.Config) *ChatHandler {
 	return &ChatHandler{
 		ChatClient:  client,
 		ConnManager: connManager,
@@ -58,7 +58,7 @@ func (h *ChatHandler) WebSocketHandler(c *websocket.Conn) {
 
 // Create a new chat via gRPC
 func (h *ChatHandler) CreateChat(c *fiber.Ctx) error {
-	var req contracts.CreateChatRequest
+	var req dto.CreateChatRequest
 	if err := c.BodyParser(&req); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid JSON format")
 	}
@@ -80,7 +80,7 @@ func (h *ChatHandler) CreateChat(c *fiber.Ctx) error {
 
 // Send a message via gRPC
 func (h *ChatHandler) SendMessage(c *fiber.Ctx) error {
-	var req contracts.SendMessageRequest
+	var req dto.SendMessageRequest
 	if err := c.BodyParser(&req); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid JSON format")
 	}
