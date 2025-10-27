@@ -5,6 +5,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
+	"github.com/wutthichod/sa-connext/services/event-service/internal/clients"
 	"github.com/wutthichod/sa-connext/services/event-service/internal/handler"
 	"github.com/wutthichod/sa-connext/services/event-service/internal/models"
 	"github.com/wutthichod/sa-connext/services/event-service/internal/repository"
@@ -33,7 +34,11 @@ func main() {
 	}
 
 	eventRepo := repository.NewEventRepository(db)
-	eventService := service.NewEventService(eventRepo)
+	userClient, err := clients.NewUserClient(config)
+	if err != nil {
+		log.Fatalf("Failed to create user client: %v", err)
+	}
+	eventService := service.NewEventService(userClient, eventRepo)
 	eventHandler := handler.NewEventHandler(eventService)
 
 	app := fiber.New()

@@ -9,6 +9,7 @@ import (
 	"github.com/wutthichod/sa-connext/services/api-gateway/dto"
 	"github.com/wutthichod/sa-connext/services/api-gateway/pkg/middlewares"
 	"github.com/wutthichod/sa-connext/shared/config"
+	"github.com/wutthichod/sa-connext/shared/contracts"
 	"github.com/wutthichod/sa-connext/shared/messaging"
 	pb "github.com/wutthichod/sa-connext/shared/proto/chat"
 )
@@ -36,6 +37,8 @@ func (h *ChatHandler) RegisterRoutes(app *fiber.App) {
 	chatRoutes.Post("/create", middlewares.JWTMiddleware(*h.Config), h.CreateChat)
 	chatRoutes.Post("/send", middlewares.JWTMiddleware(*h.Config), h.SendMessage)
 	chatRoutes.Get("/ws/:id", middlewares.JWTMiddleware(*h.Config), websocket.New(h.WebSocketHandler))
+	chatRoutes.Get("/", middlewares.JWTMiddleware(*h.Config), h.GetChats)
+	chatRoutes.Get("/:id/messages", middlewares.JWTMiddleware(*h.Config), h.GetChatMessagesByChatId)
 }
 
 // WebSocket handler extracted for clarity
@@ -75,7 +78,10 @@ func (h *ChatHandler) CreateChat(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
-	return c.Status(fiber.StatusCreated).JSON(res)
+	return c.Status(fiber.StatusCreated).JSON(contracts.Resp{
+		Success: true,
+		Data:    res,
+	})
 }
 
 // Send a message via gRPC
@@ -98,7 +104,80 @@ func (h *ChatHandler) SendMessage(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
-	return c.SendStatus(fiber.StatusOK)
+	return c.Status(fiber.StatusOK).JSON(contracts.Resp{
+		Success:    true,
+		StatusCode: fiber.StatusOK,
+	})
+}
+
+// Get chats by user id
+func (h *ChatHandler) GetChats(c *fiber.Ctx) error {
+	userID := c.Locals("userID").(string)
+	if userID == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "User ID is required")
+	}
+	res, err := h.ChatClient.GetChats(c.Context(), &pb.GetChatsRequest{
+		UserId: userID,
+	})
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+	}
+	if !res.Success {
+		return c.Status(fiber.StatusInternalServerError).JSON(contracts.Resp{
+			Success: false,
+			Message: "Internal server error",
+		})
+	}
+
+	var chats []dto.GetChatsResponse
+	for _, chat := range res.Chats {
+		chats = append(chats, dto.GetChatsResponse{
+			ChatID:             chat.ChatId,
+			OtherParticipantId: chat.OtherParticipantId,
+			CreatedAt:          chat.CreatedAt,
+			UpdatedAt:          chat.UpdatedAt,
+		})
+	}
+	return c.Status(fiber.StatusOK).JSON(contracts.Resp{
+		Success:    true,
+		StatusCode: fiber.StatusOK,
+		Data:       chats,
+	})
+}
+
+// Get chat messages by chat id
+func (h *ChatHandler) GetChatMessagesByChatId(c *fiber.Ctx) error {
+	chatID := c.Params("chat_id")
+	if chatID == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Chat ID is required")
+	}
+	res, err := h.ChatClient.GetChatMessagesByChatId(c.Context(), &pb.GetMessagesByChatIdRequest{
+		ChatId: chatID,
+	})
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+	}
+	if !res.Success {
+		return c.Status(fiber.StatusInternalServerError).JSON(contracts.Resp{
+			Success: false,
+			Message: "Internal server error",
+		})
+	}
+
+	var messages []dto.GetMessagesByChatIdResponse
+	for _, message := range res.Messages {
+		messages = append(messages, dto.GetMessagesByChatIdResponse{
+			MessageID:   message.MessageId,
+			SenderID:    message.SenderId,
+			RecipientID: message.RecipientId,
+			Message:     message.Message,
+			CreatedAt:   message.CreatedAt,
+		})
+	}
+	return c.Status(fiber.StatusOK).JSON(contracts.Resp{
+		Success: true,
+		Data:    messages,
+	})
 }
 
 // Start RabbitMQ consumer

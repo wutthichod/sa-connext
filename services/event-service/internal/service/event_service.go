@@ -4,11 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
+	"github.com/wutthichod/sa-connext/services/event-service/internal/clients"
 	"github.com/wutthichod/sa-connext/services/event-service/internal/models"
 	"github.com/wutthichod/sa-connext/services/event-service/internal/repository"
 	"github.com/wutthichod/sa-connext/shared/contracts"
+	pb "github.com/wutthichod/sa-connext/shared/proto/user"
 	"gorm.io/gorm"
 )
 
@@ -24,12 +27,13 @@ type EventServiceInterface interface {
 }
 
 type eventService struct {
-	repo repository.EventRepositoryInterface
+	userClient *clients.UserClient
+	repo       repository.EventRepositoryInterface
 }
 
 // NewEventService creates a new service instance
-func NewEventService(repo repository.EventRepositoryInterface) EventServiceInterface {
-	return &eventService{repo: repo}
+func NewEventService(userClient *clients.UserClient, repo repository.EventRepositoryInterface) EventServiceInterface {
+	return &eventService{userClient: userClient, repo: repo}
 }
 
 // CreateEvent handles the logic for creating a new event
@@ -103,5 +107,15 @@ func (s *eventService) JoinEvent(ctx context.Context, req *contracts.JoinEventRe
 		return false, nil
 	}
 
-	return true, nil
+	addUserToEventReq := &pb.AddUserToEventRequest{
+		UserId:  strconv.FormatUint(uint64(req.UserID), 10),
+		EventId: strconv.FormatUint(uint64(req.EventID), 10),
+	}
+
+	result, err := s.userClient.AddUserToEvent(ctx, addUserToEventReq)
+	if err != nil {
+		return false, err
+	}
+
+	return result.Success, nil
 }

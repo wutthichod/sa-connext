@@ -124,3 +124,83 @@ func (s *ChatService) SendMessage(ctx context.Context, req *pb.SendMessageReques
 		Status:    "sent",
 	}, nil
 }
+
+func (s *ChatService) GetChats(ctx context.Context, req *pb.GetChatsRequest) (*pb.GetChatsResponse, error) {
+	chatCollection := s.db.Collection("chats")
+
+	filter := bson.M{
+		"participants": bson.M{
+			"$all": []string{req.UserId},
+		},
+	}
+
+	var chats []*pb.Chat
+	cur, err := chatCollection.Find(ctx, filter)
+	if err != nil {
+		return &pb.GetChatsResponse{
+			Success: false,
+			Chats:   nil,
+		}, err
+	}
+	defer cur.Close(ctx)
+
+	for cur.Next(ctx) {
+		var chat models.Chat
+		if err := cur.Decode(&chat); err != nil {
+			return &pb.GetChatsResponse{
+				Success: false,
+				Chats:   nil,
+			}, err
+		}
+		otherParticipantId := chat.Participants[0]
+		if otherParticipantId == req.UserId {
+			otherParticipantId = chat.Participants[1]
+		}
+		chats = append(chats, &pb.Chat{
+			ChatId:             chat.ID.Hex(),
+			OtherParticipantId: otherParticipantId,
+			CreatedAt:          chat.CreatedAt.Format(time.RFC3339),
+			UpdatedAt:          chat.UpdatedAt.Format(time.RFC3339),
+		})
+	}
+	return &pb.GetChatsResponse{
+		Success: true,
+		Chats:   chats,
+	}, nil
+}
+
+func (s *ChatService) GetChatMessagesByChatId(ctx context.Context, req *pb.GetMessagesByChatIdRequest) (*pb.GetMessagesByChatIdResponse, error) {
+	messageCollection := s.db.Collection("messages")
+
+	filter := bson.M{
+		"chat_id": req.ChatId,
+	}
+
+	var messages []*pb.Message
+	cur, err := messageCollection.Find(ctx, filter)
+	if err != nil {
+		return &pb.GetMessagesByChatIdResponse{
+			Success:  false,
+			Messages: nil,
+		}, err
+	}
+	defer cur.Close(ctx)
+
+	for cur.Next(ctx) {
+		var message models.Message
+		if err := cur.Decode(&message); err != nil {
+			return nil, fmt.Errorf("failed to decode message: %v", err)
+		}
+		messages = append(messages, &pb.Message{
+			MessageId:   message.ID.Hex(),
+			SenderId:    message.SenderID,
+			RecipientId: message.RecipientID,
+			Message:     message.Message,
+			CreatedAt:   message.CreatedAt.Format(time.RFC3339),
+		})
+	}
+	return &pb.GetMessagesByChatIdResponse{
+		Success:  true,
+		Messages: messages,
+	}, nil
+}

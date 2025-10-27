@@ -6,22 +6,25 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/wutthichod/sa-connext/services/api-gateway/clients"
 	"github.com/wutthichod/sa-connext/services/api-gateway/dto"
+	"github.com/wutthichod/sa-connext/services/api-gateway/pkg/middlewares"
+	"github.com/wutthichod/sa-connext/shared/config"
 	"github.com/wutthichod/sa-connext/shared/contracts"
 )
 
 type EventHandler struct {
 	EventClient *clients.EventServiceClient
+	Config      *config.Config
 }
 
-func NewEventHandler(client *clients.EventServiceClient) *EventHandler {
-	return &EventHandler{client}
+func NewEventHandler(client *clients.EventServiceClient, config *config.Config) *EventHandler {
+	return &EventHandler{client, config}
 }
 
 func (h *EventHandler) RegisterRoutes(app *fiber.App) {
 	userRoutes := app.Group("/events")
-	userRoutes.Get("/", h.GetEventById)
-	userRoutes.Post("/", h.CreateEvent)
-	userRoutes.Post("/join", h.JoinEvent)
+	userRoutes.Get("/", middlewares.JWTMiddleware(*h.Config), h.GetEventById)
+	userRoutes.Post("/", middlewares.JWTMiddleware(*h.Config), h.CreateEvent)
+	userRoutes.Post("/join", middlewares.JWTMiddleware(*h.Config), h.JoinEvent)
 }
 
 func (h *EventHandler) GetEventById(c *fiber.Ctx) error {

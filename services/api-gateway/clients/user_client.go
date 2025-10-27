@@ -40,3 +40,19 @@ func (c *UserServiceClient) Close() {
 func (c *UserServiceClient) CreateUser(ctx context.Context, req *pb.CreateUserRequest) (*pb.CreateUserResponse, error) {
 	return c.Client.CreateUser(ctx, req)
 }
+
+func (c *UserServiceClient) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginResponse, error) {
+	return c.Client.Login(ctx, req)
+}
+
+func (c *UserServiceClient) GetUserByID(ctx context.Context, req *pb.GetUserByIdRequest) (*pb.GetUserByIdResponse, error) {
+	return c.Client.GetUserById(ctx, req)
+}
+
+func (c *UserServiceClient) GetUserByEventID(ctx context.Context, req *pb.GetUserByEventIdRequest) (*pb.GetUserByEventIdResponse, error) {
+	return c.Client.GetUserByEventId(ctx, req)
+}
+
+func (c *UserServiceClient) AddUserToEvent(ctx context.Context, req *pb.AddUserToEventRequest) (*pb.AddUserToEventResponse, error) {
+	return c.Client.AddUserToEvent(ctx, req)
+}

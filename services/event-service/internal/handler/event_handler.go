@@ -93,11 +93,27 @@ func (h *EventHandler) getEvent(c *fiber.Ctx) error {
 }
 
 func (h *EventHandler) joinEvent(c *fiber.Ctx) error {
+
+	userID := c.Locals("userID").(string)
+	userID_uint, err := strconv.ParseUint(userID, 10, 64)
+	if err != nil {
+		return c.Status(http.StatusInternalServerError).JSON(contracts.Resp{
+			Success: false,
+		})
+	}
+
 	var req *contracts.JoinEventRequest
 	if err := c.BodyParser(req); err != nil {
 		return c.Status(http.StatusBadRequest).JSON(contracts.Resp{
 			Success:    false,
 			StatusCode: http.StatusBadRequest,
+		})
+	}
+
+	if req.UserID != uint(userID_uint) {
+		return c.Status(http.StatusUnauthorized).JSON(contracts.Resp{
+			Success: false,
+			Message: "Unauthorized",
 		})
 	}
 

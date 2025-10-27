@@ -42,3 +42,11 @@ func (c *ChatServiceClient) CreateChat(ctx context.Context, req *pb.CreateChatRe
 func (c *ChatServiceClient) SendMessage(ctx context.Context, req *pb.SendMessageRequest) (*pb.SendMessageResponse, error) {
 	return c.Client.SendMessage(ctx, req)
 }
+
+func (c *ChatServiceClient) GetChats(ctx context.Context, req *pb.GetChatsRequest) (*pb.GetChatsResponse, error) {
+	return c.Client.GetChats(ctx, req)
+}
+
+func (c *ChatServiceClient) GetChatMessagesByChatId(ctx context.Context, req *pb.GetMessagesByChatIdRequest) (*pb.GetMessagesByChatIdResponse, error) {
+	return c.Client.GetMessagesByChatId(ctx, req)
+}

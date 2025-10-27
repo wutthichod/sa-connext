@@ -43,8 +43,8 @@ func main() {
 
 	// Initialize ChatHandler
 	chatHandler := handlers.NewChatHandler(chatClient, connMgr, consumer, &config)
-	userHandler := handlers.NewUserHandler(userClient)
-	eventHandler := handlers.NewEventHandler(eventClient)
+	userHandler := handlers.NewUserHandler(userClient, &config)
+	eventHandler := handlers.NewEventHandler(eventClient, &config)
 
 	// Register Routes
 	chatHandler.RegisterRoutes(app)

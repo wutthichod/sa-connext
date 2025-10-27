@@ -7,21 +7,27 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/wutthichod/sa-connext/services/api-gateway/clients"
 	"github.com/wutthichod/sa-connext/services/api-gateway/dto"
+	"github.com/wutthichod/sa-connext/services/api-gateway/pkg/middlewares"
+	"github.com/wutthichod/sa-connext/shared/config"
+	"github.com/wutthichod/sa-connext/shared/contracts"
 	pb "github.com/wutthichod/sa-connext/shared/proto/user"
 )
 
 type UserHandler struct {
 	UserClient *clients.UserServiceClient
+	Config     *config.Config
 }
 
-func NewUserHandler(uc *clients.UserServiceClient) *UserHandler {
-	return &UserHandler{UserClient: uc}
+func NewUserHandler(uc *clients.UserServiceClient, config *config.Config) *UserHandler {
+	return &UserHandler{UserClient: uc, Config: config}
 }
 
 func (h *UserHandler) RegisterRoutes(app *fiber.App) {
 	userRoutes := app.Group("/users")
 	userRoutes.Post("/register", h.Register)
 	userRoutes.Post("/login", h.Login)
+	userRoutes.Get("/:id", middlewares.JWTMiddleware(*h.Config), h.GetUserByID)
+	userRoutes.Get("/events/:event_id", middlewares.JWTMiddleware(*h.Config), h.GetUserByEventID)
 }
 
 func (h *UserHandler) Register(c *fiber.Ctx) error {
@@ -93,5 +99,70 @@ func (h *UserHandler) Login(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"success":  res.GetSuccess(),
 		"jwtToken": res.GetJwtToken(),
+	})
+}
+
+func (h *UserHandler) GetUserByID(c *fiber.Ctx) error {
+	ctx := c.Context()
+
+	userID := c.Params("id")
+	if userID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(contracts.Resp{
+			Success: false,
+			Message: "User ID is required",
+		})
+	}
+	res, err := h.UserClient.GetUserByID(ctx, &pb.GetUserByIdRequest{
+		UserId: userID,
+	})
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(contracts.Resp{
+			Success: false,
+			Message: "Internal server error",
+		})
+	}
+
+	if !res.Success {
+		return c.Status(fiber.StatusInternalServerError).JSON(contracts.Resp{
+			Success: false,
+			Message: "Internal server error",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(contracts.Resp{
+		Success: true,
+		Data:    res.GetUser(),
+	})
+}
+
+func (h *UserHandler) GetUserByEventID(c *fiber.Ctx) error {
+	ctx := c.Context()
+
+	eventID := c.Params("id")
+	if eventID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(contracts.Resp{
+			Success: false,
+			Message: "Event ID is required",
+		})
+	}
+	res, err := h.UserClient.GetUserByEventID(ctx, &pb.GetUserByEventIdRequest{
+		EventId: eventID,
+	})
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(contracts.Resp{
+			Success: false,
+			Message: "Internal server error",
+		})
+	}
+	if !res.Success {
+		return c.Status(fiber.StatusInternalServerError).JSON(contracts.Resp{
+			Success: false,
+			Message: "Internal server error",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(contracts.Resp{
+		Success: true,
+		Data:    res.GetUsers(),
 	})
 }
