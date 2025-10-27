@@ -3,7 +3,6 @@ package clients
 import (
 	"context"
 
-	"github.com/wutthichod/sa-connext/shared/config"
 	pb "github.com/wutthichod/sa-connext/shared/proto/chat"
 
 	"google.golang.org/grpc"
@@ -15,9 +14,9 @@ type ChatServiceClient struct {
 	conn   *grpc.ClientConn
 }
 
-func NewChatServiceClient(config config.Config) (*ChatServiceClient, error) {
+func NewChatServiceClient(addr string) (*ChatServiceClient, error) {
 
-	conn, err := grpc.NewClient(config.App().Chat, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
 	}

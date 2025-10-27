@@ -16,7 +16,7 @@ import (
 
 func main() {
 
-	godotenv.Load("./.env")
+	godotenv.Load("./services/chat-service/.env")
 	config, err := config.InitConfig()
 	if err != nil {
 		log.Fatal(err)

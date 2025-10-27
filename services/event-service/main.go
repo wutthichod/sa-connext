@@ -18,7 +18,7 @@ import (
 
 func main() {
 
-	_ = godotenv.Load(".env")
+	_ = godotenv.Load("./services/event-service/.env")
 	config, err := config.InitConfig()
 	if err != nil {
 		log.Fatal(err)
@@ -33,11 +33,12 @@ func main() {
 		log.Fatalf("Failed to migrate database: %v", err)
 	}
 
-	eventRepo := repository.NewEventRepository(db)
 	userClient, err := clients.NewUserClient(config)
 	if err != nil {
 		log.Fatalf("Failed to create user client: %v", err)
 	}
+
+	eventRepo := repository.NewEventRepository(db)
 	eventService := service.NewEventService(userClient, eventRepo)
 	eventHandler := handler.NewEventHandler(eventService)
 

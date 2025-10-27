@@ -105,8 +105,7 @@ func (h *ChatHandler) SendMessage(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(contracts.Resp{
-		Success:    true,
-		StatusCode: fiber.StatusOK,
+		Success: true,
 	})
 }
 

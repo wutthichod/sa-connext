@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"log"
+	"net/http"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
@@ -22,7 +24,7 @@ func NewEventHandler(client *clients.EventServiceClient, config *config.Config) 
 
 func (h *EventHandler) RegisterRoutes(app *fiber.App) {
 	userRoutes := app.Group("/events")
-	userRoutes.Get("/", middlewares.JWTMiddleware(*h.Config), h.GetEventById)
+	userRoutes.Get("/:eid", middlewares.JWTMiddleware(*h.Config), h.GetEventById)
 	userRoutes.Post("/", middlewares.JWTMiddleware(*h.Config), h.CreateEvent)
 	userRoutes.Post("/join", middlewares.JWTMiddleware(*h.Config), h.JoinEvent)
 }
@@ -30,7 +32,7 @@ func (h *EventHandler) RegisterRoutes(app *fiber.App) {
 func (h *EventHandler) GetEventById(c *fiber.Ctx) error {
 	ctx := c.Context()
 
-	eventID := c.Params("id")
+	eventID := c.Params("eid")
 	if eventID == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(contracts.Resp{
 			Success: false,
@@ -40,6 +42,14 @@ func (h *EventHandler) GetEventById(c *fiber.Ctx) error {
 
 	res, err := h.EventClient.GetEventById(ctx, eventID)
 	if err != nil {
+		log.Println(err.Error())
+		if res != nil && res.StatusCode == http.StatusNotFound {
+			return c.Status(fiber.StatusNotFound).JSON(contracts.Resp{
+				Success: false,
+				Message: "Event not found",
+			})
+		}
+
 		return c.Status(fiber.StatusInternalServerError).JSON(contracts.Resp{
 			Success: false,
 			Message: "Internal server error",

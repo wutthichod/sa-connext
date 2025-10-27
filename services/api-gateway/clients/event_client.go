@@ -17,8 +17,9 @@ type RouteDefinition struct {
 }
 
 var routes = map[string]RouteDefinition{
-	"createEvent": RouteDefinition{Method: "POST", Path: "/"},
-	"getEvent":    RouteDefinition{Method: "GET", Path: "/"},
+	"createEvent": {Method: "POST", Path: "/"},
+	"getEvent":    {Method: "GET", Path: "/%s"},
+	"joinEvent":   {Method: "POST", Path: "/join"},
 }
 
 type EventServiceClient struct {
@@ -83,19 +84,19 @@ func (c *EventServiceClient) GetEventById(ctx context.Context, eventID string) (
 	}
 	httpReq.Header.Set("Accept", "application/json")
 
-	resp, err := c.client.Do(httpReq)
+	httpRes, err := c.client.Do(httpReq)
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
 
-	defer resp.Body.Close()
+	defer httpRes.Body.Close()
 
-	var getEventResp contracts.Resp
-	if err := json.NewDecoder(resp.Body).Decode(&getEventResp); err != nil {
+	var res contracts.Resp
+	if err := json.NewDecoder(httpRes.Body).Decode(&res); err != nil {
 		return nil, fmt.Errorf("failed to decode response body: %w", err)
 	}
 
-	return &getEventResp, nil
+	return &res, nil
 }
 
 func (c *EventServiceClient) JoinEvent(ctx context.Context, req *contracts.JoinEventRequest) (*contracts.Resp, error) {

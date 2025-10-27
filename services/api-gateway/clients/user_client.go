@@ -3,7 +3,6 @@ package clients
 import (
 	"context"
 
-	"github.com/wutthichod/sa-connext/shared/config"
 	pb "github.com/wutthichod/sa-connext/shared/proto/user"
 
 	"google.golang.org/grpc"
@@ -15,9 +14,9 @@ type UserServiceClient struct {
 	conn   *grpc.ClientConn
 }
 
-func NewUserServiceClient(config config.Config) (*UserServiceClient, error) {
+func NewUserServiceClient(addr string) (*UserServiceClient, error) {
 
-	conn, err := grpc.NewClient(config.App().User, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
 	}

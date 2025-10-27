@@ -13,7 +13,10 @@ import (
 
 func main() {
 
-	godotenv.Load("./.env") // ./ = โฟลเดอร์เดียวกับ main.go
+	err := godotenv.Load("./services/api-gateway/.env") // ./ = โฟลเดอร์เดียวกับ main.go
+	if err != nil {
+		log.Fatal(err)
+	}
 	config, err := config.InitConfig()
 	if err != nil {
 		log.Fatal(err)
@@ -23,8 +26,8 @@ func main() {
 	connMgr := messaging.NewConnectionManager()
 
 	// Create gRPC Client
-	chatClient, _ := clients.NewChatServiceClient(config)
-	userClient, _ := clients.NewUserServiceClient(config)
+	chatClient, _ := clients.NewChatServiceClient(config.App().Chat)
+	userClient, _ := clients.NewUserServiceClient(config.App().User)
 	eventClient := clients.NewEventServiceClient(config.App().Event)
 	// WS Connection Manager
 
