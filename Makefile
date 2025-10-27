@@ -4,15 +4,11 @@ GO_OUT := .
 
 .PHONY: generate-proto
 generate-proto:
-	protoc \
-		--proto_path=$(PROTO_DIR) \
-		--go_out=$(GO_OUT) \
-		--go-grpc_out=$(GO_OUT) \
-		$(PROTO_SRC)
-
-
-
-
+    protoc \
+        --proto_path=$(PROTO_DIR) \
+        --go_out=$(GO_OUT) \
+        --go-grpc_out=$(GO_OUT) \
+        $(PROTO_SRC)
 
 
 # --- Configuration ---
@@ -44,7 +40,7 @@ BINARIES := $(BIN_A) $(BIN_B) $(BIN_C) $(BIN_D) $(BIN_E)
 
 # --- Main Targets ---
 
-.PHONY: all build run clean stop
+.PHONY: all build run clean stop stop-unix
 
 # Target to build and run all
 all: build run
@@ -77,15 +73,28 @@ clean:
 	rm -rf $(BIN_DIR)
 	@echo "Cleanup complete."
 
-EXE_EXT := .exe
-# 5. Target to stop all running services
+# 5. Target to stop all running services (Windows Version)
+# NOTE: The EXEC_EXT variable was removed as it's not used here.
 stop:
-	@echo "--- Stopping all services on Windows ---"
-	@cmd /c "taskkill /F /IM $(SERVICE_A_NAME) /T 2>nul" || true
-	@cmd /c "taskkill /F /IM $(SERVICE_B_NAME) /T 2>nul" || true
-	@cmd /c "taskkill /F /IM $(SERVICE_C_NAME) /T 2>nul" || true
-	@cmd /c "taskkill /F /IM $(SERVICE_D_NAME) /T 2>nul" || true
-	@cmd /c "taskkill /F /IM $(SERVICE_E_NAME) /T 2>nul" || true
+	@echo "--- Stopping all services on Windows (using taskkill) ---"
+	@cmd /c "taskkill /F /IM $(SERVICE_A_NAME).exe /T 2>nul" || true
+	@cmd /c "taskkill /F /IM $(SERVICE_B_NAME).exe /T 2>nul" || true
+	@cmd /c "taskkill /F /IM $(SERVICE_C_NAME).exe /T 2>nul" || true
+	@cmd /c "taskkill /F /IM $(SERVICE_D_NAME).exe /T 2>nul" || true
+	@cmd /c "taskkill /F /IM $(SERVICE_E_NAME).exe /T 2>nul" || true
+	@echo "All services stopped."
+
+# 6. Target to stop all running services (macOS/Linux Version)
+# Use 'make stop-unix' to run this target.
+stop-unix:
+	@echo "--- Stopping all services on macOS/Linux (using pkill -f) ---"
+    # pkill -f matches the full command line, which includes the service name.
+    # The '-' prefix ignores the error if the process is not found.
+	-@pkill -f $(SERVICE_A_NAME) || true
+	-@pkill -f $(SERVICE_B_NAME) || true
+	-@pkill -f $(SERVICE_C_NAME) || true
+	-@pkill -f $(SERVICE_D_NAME) || true
+	-@pkill -f $(SERVICE_E_NAME) || true
 	@echo "All services stopped."
 
 

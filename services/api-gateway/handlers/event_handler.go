@@ -2,8 +2,6 @@ package handlers
 
 import (
 	"log"
-	"net/http"
-	"strconv"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/wutthichod/sa-connext/services/api-gateway/clients"
@@ -42,14 +40,7 @@ func (h *EventHandler) GetEventById(c *fiber.Ctx) error {
 
 	res, err := h.EventClient.GetEventById(ctx, eventID)
 	if err != nil {
-		log.Println(err.Error())
-		if res != nil && res.StatusCode == http.StatusNotFound {
-			return c.Status(fiber.StatusNotFound).JSON(contracts.Resp{
-				Success: false,
-				Message: "Event not found",
-			})
-		}
-
+		log.Printf("Error calling event service: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(contracts.Resp{
 			Success: false,
 			Message: "Internal server error",
@@ -60,7 +51,7 @@ func (h *EventHandler) GetEventById(c *fiber.Ctx) error {
 		return c.Status(res.StatusCode).JSON(res)
 	}
 
-	return c.Status(fiber.StatusOK).JSON(res)
+	return c.Status(res.StatusCode).JSON(res)
 }
 
 func (h *EventHandler) CreateEvent(c *fiber.Ctx) error {
@@ -103,25 +94,21 @@ func (h *EventHandler) JoinEvent(c *fiber.Ctx) error {
 		})
 	}
 
-	userID := c.Locals("userID").(string)
-	userID_uint, err := strconv.ParseUint(userID, 10, 64)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(contracts.Resp{
-			Success: false,
-		})
-	}
+	userID := c.Locals("userID").(uint)
 
 	contract := &contracts.JoinEventRequest{
 		EventID:     req.EventID,
-		UserID:      uint(userID_uint),
+		UserID:      userID,
 		JoiningCode: req.JoiningCode,
 	}
 
 	res, err := h.EventClient.JoinEvent(ctx, contract)
 	if err != nil {
+		log.Printf("Error calling event service: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(contracts.Resp{
-			Success: false,
-			Message: "Internal server error while processing the request.",
+			Success:    false,
+			StatusCode: fiber.StatusInternalServerError,
+			Message:    "Internal server error while processing the request.",
 		})
 	}
 
@@ -129,5 +116,5 @@ func (h *EventHandler) JoinEvent(c *fiber.Ctx) error {
 		return c.Status(res.StatusCode).JSON(res)
 	}
 
-	return c.Status(fiber.StatusOK).JSON(res)
+	return c.Status(res.StatusCode).JSON(res)
 }

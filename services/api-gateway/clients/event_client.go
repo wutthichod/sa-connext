@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/wutthichod/sa-connext/shared/contracts"
@@ -17,9 +18,9 @@ type RouteDefinition struct {
 }
 
 var routes = map[string]RouteDefinition{
-	"createEvent": {Method: "POST", Path: "/"},
-	"getEvent":    {Method: "GET", Path: "/%s"},
-	"joinEvent":   {Method: "POST", Path: "/join"},
+	"createEvent": {Method: "POST", Path: "/events/"},
+	"getEvent":    {Method: "GET", Path: "/events/%s"},
+	"joinEvent":   {Method: "POST", Path: "/events/join"},
 }
 
 type EventServiceClient struct {
@@ -28,6 +29,11 @@ type EventServiceClient struct {
 }
 
 func NewEventServiceClient(addr string) *EventServiceClient {
+	// Add http:// prefix if not present
+	if !strings.HasPrefix(addr, "http://") && !strings.HasPrefix(addr, "https://") {
+		addr = "http://" + addr
+	}
+
 	return &EventServiceClient{
 		client: &http.Client{
 			Timeout: 15 * time.Second,

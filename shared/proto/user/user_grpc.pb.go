@@ -8,6 +8,7 @@ package user
 
 import (
 	context "context"
+
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -19,11 +20,11 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	UserService_CreateUser_FullMethodName       = "/users.UserService/CreateUser"
-	UserService_Login_FullMethodName            = "/users.UserService/Login"
-	UserService_GetUserById_FullMethodName      = "/users.UserService/GetUserById"
-	UserService_GetUserByEventId_FullMethodName = "/users.UserService/GetUserByEventId"
-	UserService_AddUserToEvent_FullMethodName   = "/users.UserService/AddUserToEvent"
+	UserService_CreateUser_FullMethodName        = "/users.UserService/CreateUser"
+	UserService_Login_FullMethodName             = "/users.UserService/Login"
+	UserService_GetUserById_FullMethodName       = "/users.UserService/GetUserById"
+	UserService_GetUsersByEventId_FullMethodName = "/users.UserService/GetUsersByEventId"
+	UserService_AddUserToEvent_FullMethodName    = "/users.UserService/AddUserToEvent"
 )
 
 // UserServiceClient is the client API for UserService service.
@@ -33,7 +34,7 @@ type UserServiceClient interface {
 	CreateUser(ctx context.Context, in *CreateUserRequest, opts ...grpc.CallOption) (*CreateUserResponse, error)
 	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error)
 	GetUserById(ctx context.Context, in *GetUserByIdRequest, opts ...grpc.CallOption) (*GetUserByIdResponse, error)
-	GetUserByEventId(ctx context.Context, in *GetUserByEventIdRequest, opts ...grpc.CallOption) (*GetUserByEventIdResponse, error)
+	GetUsersByEventId(ctx context.Context, in *GetUsersByEventIdRequest, opts ...grpc.CallOption) (*GetUsersByEventIdResponse, error)
 	AddUserToEvent(ctx context.Context, in *AddUserToEventRequest, opts ...grpc.CallOption) (*AddUserToEventResponse, error)
 }
 
@@ -75,10 +76,10 @@ func (c *userServiceClient) GetUserById(ctx context.Context, in *GetUserByIdRequ
 	return out, nil
 }
 
-func (c *userServiceClient) GetUserByEventId(ctx context.Context, in *GetUserByEventIdRequest, opts ...grpc.CallOption) (*GetUserByEventIdResponse, error) {
+func (c *userServiceClient) GetUsersByEventId(ctx context.Context, in *GetUsersByEventIdRequest, opts ...grpc.CallOption) (*GetUsersByEventIdResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetUserByEventIdResponse)
-	err := c.cc.Invoke(ctx, UserService_GetUserByEventId_FullMethodName, in, out, cOpts...)
+	out := new(GetUsersByEventIdResponse)
+	err := c.cc.Invoke(ctx, UserService_GetUsersByEventId_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +103,7 @@ type UserServiceServer interface {
 	CreateUser(context.Context, *CreateUserRequest) (*CreateUserResponse, error)
 	Login(context.Context, *LoginRequest) (*LoginResponse, error)
 	GetUserById(context.Context, *GetUserByIdRequest) (*GetUserByIdResponse, error)
-	GetUserByEventId(context.Context, *GetUserByEventIdRequest) (*GetUserByEventIdResponse, error)
+	GetUsersByEventId(context.Context, *GetUsersByEventIdRequest) (*GetUsersByEventIdResponse, error)
 	AddUserToEvent(context.Context, *AddUserToEventRequest) (*AddUserToEventResponse, error)
 	mustEmbedUnimplementedUserServiceServer()
 }
@@ -123,8 +124,8 @@ func (UnimplementedUserServiceServer) Login(context.Context, *LoginRequest) (*Lo
 func (UnimplementedUserServiceServer) GetUserById(context.Context, *GetUserByIdRequest) (*GetUserByIdResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetUserById not implemented")
 }
-func (UnimplementedUserServiceServer) GetUserByEventId(context.Context, *GetUserByEventIdRequest) (*GetUserByEventIdResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetUserByEventId not implemented")
+func (UnimplementedUserServiceServer) GetUsersByEventId(context.Context, *GetUsersByEventIdRequest) (*GetUsersByEventIdResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetUsersByEventId not implemented")
 }
 func (UnimplementedUserServiceServer) AddUserToEvent(context.Context, *AddUserToEventRequest) (*AddUserToEventResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddUserToEvent not implemented")
@@ -204,20 +205,20 @@ func _UserService_GetUserById_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
-func _UserService_GetUserByEventId_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetUserByEventIdRequest)
+func _UserService_GetUsersByEventId_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetUsersByEventIdRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(UserServiceServer).GetUserByEventId(ctx, in)
+		return srv.(UserServiceServer).GetUsersByEventId(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: UserService_GetUserByEventId_FullMethodName,
+		FullMethod: UserService_GetUsersByEventId_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(UserServiceServer).GetUserByEventId(ctx, req.(*GetUserByEventIdRequest))
+		return srv.(UserServiceServer).GetUsersByEventId(ctx, req.(*GetUsersByEventIdRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -260,8 +261,8 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _UserService_GetUserById_Handler,
 		},
 		{
-			MethodName: "GetUserByEventId",
-			Handler:    _UserService_GetUserByEventId_Handler,
+			MethodName: "GetUsersByEventId",
+			Handler:    _UserService_GetUsersByEventId_Handler,
 		},
 		{
 			MethodName: "AddUserToEvent",

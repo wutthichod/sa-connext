@@ -8,7 +8,7 @@ service UserService {
     rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
     rpc Login(LoginRequest) returns (LoginResponse);
     rpc GetUserById(GetUserByIdRequest) returns (GetUserByIdResponse);
-    rpc GetUserByEventId(GetUserByEventIdRequest) returns (GetUserByEventIdResponse);
+    rpc GetUsersByEventId(GetUsersByEventIdRequest) returns (GetUsersByEventIdResponse);
     rpc AddUserToEvent(AddUserToEventRequest) returns (AddUserToEventResponse);
 }
 
@@ -46,11 +46,11 @@ message GetUserByIdResponse {
     User user = 2;
 }
 
-message GetUserByEventIdRequest {
+message GetUsersByEventIdRequest {
     string event_id = 1;
 }
 
-message GetUserByEventIdResponse {
+message GetUsersByEventIdResponse {
     bool success = 1;
     repeated User users = 2;
 }

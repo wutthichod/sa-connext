@@ -29,17 +29,17 @@ func (h *EventHandler) RegisterRoutes(app *fiber.App) {
 }
 
 func (h *EventHandler) createEvent(c *fiber.Ctx) error {
-	var req *contracts.CreateEventRequest
-	if err := c.BodyParser(req); err != nil {
+	var req contracts.CreateEventRequest
+	if err := c.BodyParser(&req); err != nil {
 		return c.Status(http.StatusBadRequest).JSON(contracts.Resp{
 			Success:    false,
 			StatusCode: http.StatusBadRequest,
+			Message:    "Invalid request body",
 		})
 	}
 
-	res, err := h.service.CreateEvent(c.Context(), req)
+	res, err := h.service.CreateEvent(c.Context(), &req)
 	if err != nil {
-
 		if errors.Is(err, service.ErrValidation) {
 			return c.Status(http.StatusBadRequest).JSON(contracts.Resp{
 				Success:    false,
@@ -51,6 +51,7 @@ func (h *EventHandler) createEvent(c *fiber.Ctx) error {
 		return c.Status(http.StatusInternalServerError).JSON(contracts.Resp{
 			Success:    false,
 			StatusCode: http.StatusInternalServerError,
+			Message:    err.Error(),
 		})
 	}
 
@@ -65,9 +66,10 @@ func (h *EventHandler) getEvent(c *fiber.Ctx) error {
 	eventID := c.Params("id")
 	eventID_uint, err := strconv.ParseUint(eventID, 10, 64)
 	if err != nil {
-		return c.Status(http.StatusInternalServerError).JSON(contracts.Resp{
+		return c.Status(http.StatusBadRequest).JSON(contracts.Resp{
 			Success:    false,
-			StatusCode: http.StatusInternalServerError,
+			StatusCode: http.StatusBadRequest,
+			Message:    "Invalid event ID format",
 		})
 	}
 
@@ -81,7 +83,9 @@ func (h *EventHandler) getEvent(c *fiber.Ctx) error {
 			})
 		}
 		return c.Status(http.StatusInternalServerError).JSON(contracts.Resp{
-			Success: false,
+			Success:    false,
+			StatusCode: http.StatusInternalServerError,
+			Message:    err.Error(),
 		})
 	}
 
@@ -93,31 +97,16 @@ func (h *EventHandler) getEvent(c *fiber.Ctx) error {
 }
 
 func (h *EventHandler) joinEvent(c *fiber.Ctx) error {
-
-	userID := c.Locals("userID").(string)
-	userID_uint, err := strconv.ParseUint(userID, 10, 64)
-	if err != nil {
-		return c.Status(http.StatusInternalServerError).JSON(contracts.Resp{
-			Success: false,
-		})
-	}
-
-	var req *contracts.JoinEventRequest
-	if err := c.BodyParser(req); err != nil {
+	var req contracts.JoinEventRequest
+	if err := c.BodyParser(&req); err != nil {
 		return c.Status(http.StatusBadRequest).JSON(contracts.Resp{
 			Success:    false,
 			StatusCode: http.StatusBadRequest,
+			Message:    "Invalid request body",
 		})
 	}
 
-	if req.UserID != uint(userID_uint) {
-		return c.Status(http.StatusUnauthorized).JSON(contracts.Resp{
-			Success: false,
-			Message: "Unauthorized",
-		})
-	}
-
-	ok, err := h.service.JoinEvent(c.Context(), req)
+	ok, err := h.service.JoinEvent(c.Context(), &req)
 	if ok {
 		// call user service add this event id to user current event
 		return c.Status(http.StatusOK).JSON(contracts.Resp{
@@ -127,11 +116,14 @@ func (h *EventHandler) joinEvent(c *fiber.Ctx) error {
 	}
 	if err != nil {
 		return c.Status(http.StatusInternalServerError).JSON(contracts.Resp{
-			Success: false,
+			Success:    false,
+			StatusCode: http.StatusInternalServerError,
+			Message:    err.Error(),
 		})
 	}
-	return c.Status(http.StatusInternalServerError).JSON(contracts.Resp{
+	return c.Status(http.StatusUnauthorized).JSON(contracts.Resp{
 		Success:    false,
 		StatusCode: http.StatusUnauthorized,
+		Message:    "Invalid joining code",
 	})
 }

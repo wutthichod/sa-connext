@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/gofiber/fiber/v2"
@@ -111,12 +112,9 @@ func (h *ChatHandler) SendMessage(c *fiber.Ctx) error {
 
 // Get chats by user id
 func (h *ChatHandler) GetChats(c *fiber.Ctx) error {
-	userID := c.Locals("userID").(string)
-	if userID == "" {
-		return fiber.NewError(fiber.StatusBadRequest, "User ID is required")
-	}
+	userID := c.Locals("userID").(uint)
 	res, err := h.ChatClient.GetChats(c.Context(), &pb.GetChatsRequest{
-		UserId: userID,
+		UserId: fmt.Sprintf("%d", userID),
 	})
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
@@ -146,7 +144,7 @@ func (h *ChatHandler) GetChats(c *fiber.Ctx) error {
 
 // Get chat messages by chat id
 func (h *ChatHandler) GetChatMessagesByChatId(c *fiber.Ctx) error {
-	chatID := c.Params("chat_id")
+	chatID := c.Params("id")
 	if chatID == "" {
 		return fiber.NewError(fiber.StatusBadRequest, "Chat ID is required")
 	}

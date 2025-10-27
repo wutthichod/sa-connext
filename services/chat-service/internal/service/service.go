@@ -144,6 +144,12 @@ func (s *ChatService) GetChats(ctx context.Context, req *pb.GetChatsRequest) (*p
 	}
 	defer cur.Close(ctx)
 
+	if !cur.TryNext(ctx) {
+		return &pb.GetChatsResponse{
+			Success: false,
+			Chats:   nil,
+		}, nil
+	}
 	for cur.Next(ctx) {
 		var chat models.Chat
 		if err := cur.Decode(&chat); err != nil {
@@ -169,7 +175,7 @@ func (s *ChatService) GetChats(ctx context.Context, req *pb.GetChatsRequest) (*p
 	}, nil
 }
 
-func (s *ChatService) GetChatMessagesByChatId(ctx context.Context, req *pb.GetMessagesByChatIdRequest) (*pb.GetMessagesByChatIdResponse, error) {
+func (s *ChatService) GetMessagesByChatId(ctx context.Context, req *pb.GetMessagesByChatIdRequest) (*pb.GetMessagesByChatIdResponse, error) {
 	messageCollection := s.db.Collection("messages")
 
 	filter := bson.M{

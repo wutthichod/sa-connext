@@ -27,7 +27,7 @@ func (h *UserHandler) RegisterRoutes(app *fiber.App) {
 	userRoutes.Post("/register", h.Register)
 	userRoutes.Post("/login", h.Login)
 	userRoutes.Get("/:id", middlewares.JWTMiddleware(*h.Config), h.GetUserByID)
-	userRoutes.Get("/events/:event_id", middlewares.JWTMiddleware(*h.Config), h.GetUserByEventID)
+	userRoutes.Get("/events/:eid", middlewares.JWTMiddleware(*h.Config), h.GetUserByEventID)
 }
 
 func (h *UserHandler) Register(c *fiber.Ctx) error {
@@ -116,6 +116,7 @@ func (h *UserHandler) GetUserByID(c *fiber.Ctx) error {
 		UserId: userID,
 	})
 	if err != nil {
+		log.Printf("Error calling user service: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(contracts.Resp{
 			Success: false,
 			Message: "Internal server error",
@@ -123,6 +124,7 @@ func (h *UserHandler) GetUserByID(c *fiber.Ctx) error {
 	}
 
 	if !res.Success {
+		log.Printf("Error calling user service: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(contracts.Resp{
 			Success: false,
 			Message: "Internal server error",
@@ -138,17 +140,18 @@ func (h *UserHandler) GetUserByID(c *fiber.Ctx) error {
 func (h *UserHandler) GetUserByEventID(c *fiber.Ctx) error {
 	ctx := c.Context()
 
-	eventID := c.Params("id")
+	eventID := c.Params("eid")
 	if eventID == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(contracts.Resp{
 			Success: false,
 			Message: "Event ID is required",
 		})
 	}
-	res, err := h.UserClient.GetUserByEventID(ctx, &pb.GetUserByEventIdRequest{
+	res, err := h.UserClient.GetUserByEventID(ctx, &pb.GetUsersByEventIdRequest{
 		EventId: eventID,
 	})
 	if err != nil {
+		log.Printf("Error calling user service: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(contracts.Resp{
 			Success: false,
 			Message: "Internal server error",

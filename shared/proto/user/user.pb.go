@@ -357,27 +357,27 @@ func (x *GetUserByIdResponse) GetUser() *User {
 	return nil
 }
 
-type GetUserByEventIdRequest struct {
+type GetUsersByEventIdRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	EventId       string                 `protobuf:"bytes,1,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *GetUserByEventIdRequest) Reset() {
-	*x = GetUserByEventIdRequest{}
+func (x *GetUsersByEventIdRequest) Reset() {
+	*x = GetUsersByEventIdRequest{}
 	mi := &file_user_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *GetUserByEventIdRequest) String() string {
+func (x *GetUsersByEventIdRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetUserByEventIdRequest) ProtoMessage() {}
+func (*GetUsersByEventIdRequest) ProtoMessage() {}
 
-func (x *GetUserByEventIdRequest) ProtoReflect() protoreflect.Message {
+func (x *GetUsersByEventIdRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_user_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -389,19 +389,19 @@ func (x *GetUserByEventIdRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GetUserByEventIdRequest.ProtoReflect.Descriptor instead.
-func (*GetUserByEventIdRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use GetUsersByEventIdRequest.ProtoReflect.Descriptor instead.
+func (*GetUsersByEventIdRequest) Descriptor() ([]byte, []int) {
 	return file_user_proto_rawDescGZIP(), []int{6}
 }
 
-func (x *GetUserByEventIdRequest) GetEventId() string {
+func (x *GetUsersByEventIdRequest) GetEventId() string {
 	if x != nil {
 		return x.EventId
 	}
 	return ""
 }
 
-type GetUserByEventIdResponse struct {
+type GetUsersByEventIdResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
 	Users         []*User                `protobuf:"bytes,2,rep,name=users,proto3" json:"users,omitempty"`
@@ -409,20 +409,20 @@ type GetUserByEventIdResponse struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *GetUserByEventIdResponse) Reset() {
-	*x = GetUserByEventIdResponse{}
+func (x *GetUsersByEventIdResponse) Reset() {
+	*x = GetUsersByEventIdResponse{}
 	mi := &file_user_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *GetUserByEventIdResponse) String() string {
+func (x *GetUsersByEventIdResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetUserByEventIdResponse) ProtoMessage() {}
+func (*GetUsersByEventIdResponse) ProtoMessage() {}
 
-func (x *GetUserByEventIdResponse) ProtoReflect() protoreflect.Message {
+func (x *GetUsersByEventIdResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_user_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -434,19 +434,19 @@ func (x *GetUserByEventIdResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GetUserByEventIdResponse.ProtoReflect.Descriptor instead.
-func (*GetUserByEventIdResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use GetUsersByEventIdResponse.ProtoReflect.Descriptor instead.
+func (*GetUsersByEventIdResponse) Descriptor() ([]byte, []int) {
 	return file_user_proto_rawDescGZIP(), []int{7}
 }
 
-func (x *GetUserByEventIdResponse) GetSuccess() bool {
+func (x *GetUsersByEventIdResponse) GetSuccess() bool {
 	if x != nil {
 		return x.Success
 	}
 	return false
 }
 
-func (x *GetUserByEventIdResponse) GetUsers() []*User {
+func (x *GetUsersByEventIdResponse) GetUsers() []*User {
 	if x != nil {
 		return x.Users
 	}
@@ -771,10 +771,10 @@ const file_user_proto_rawDesc = "" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\"P\n" +
 	"\x13GetUserByIdResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x1f\n" +
-	"\x04user\x18\x02 \x01(\v2\v.users.UserR\x04user\"4\n" +
-	"\x17GetUserByEventIdRequest\x12\x19\n" +
-	"\bevent_id\x18\x01 \x01(\tR\aeventId\"W\n" +
-	"\x18GetUserByEventIdResponse\x12\x18\n" +
+	"\x04user\x18\x02 \x01(\v2\v.users.UserR\x04user\"5\n" +
+	"\x18GetUsersByEventIdRequest\x12\x19\n" +
+	"\bevent_id\x18\x01 \x01(\tR\aeventId\"X\n" +
+	"\x19GetUsersByEventIdResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12!\n" +
 	"\x05users\x18\x02 \x03(\v2\v.users.UserR\x05users\"K\n" +
 	"\x15AddUserToEventRequest\x12\x17\n" +
@@ -798,13 +798,13 @@ const file_user_proto_rawDesc = "" +
 	"\n" +
 	"university\x18\x01 \x01(\tR\n" +
 	"university\x12\x14\n" +
-	"\x05major\x18\x02 \x01(\tR\x05major2\xee\x02\n" +
+	"\x05major\x18\x02 \x01(\tR\x05major2\xf1\x02\n" +
 	"\vUserService\x12A\n" +
 	"\n" +
 	"CreateUser\x12\x18.users.CreateUserRequest\x1a\x19.users.CreateUserResponse\x122\n" +
 	"\x05Login\x12\x13.users.LoginRequest\x1a\x14.users.LoginResponse\x12D\n" +
-	"\vGetUserById\x12\x19.users.GetUserByIdRequest\x1a\x1a.users.GetUserByIdResponse\x12S\n" +
-	"\x10GetUserByEventId\x12\x1e.users.GetUserByEventIdRequest\x1a\x1f.users.GetUserByEventIdResponse\x12M\n" +
+	"\vGetUserById\x12\x19.users.GetUserByIdRequest\x1a\x1a.users.GetUserByIdResponse\x12V\n" +
+	"\x11GetUsersByEventId\x12\x1f.users.GetUsersByEventIdRequest\x1a .users.GetUsersByEventIdResponse\x12M\n" +
 	"\x0eAddUserToEvent\x12\x1c.users.AddUserToEventRequest\x1a\x1d.users.AddUserToEventResponseB\x18Z\x16shared/proto/user;userb\x06proto3"
 
 var (
@@ -821,36 +821,36 @@ func file_user_proto_rawDescGZIP() []byte {
 
 var file_user_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_user_proto_goTypes = []any{
-	(*CreateUserRequest)(nil),        // 0: users.CreateUserRequest
-	(*CreateUserResponse)(nil),       // 1: users.CreateUserResponse
-	(*LoginRequest)(nil),             // 2: users.LoginRequest
-	(*LoginResponse)(nil),            // 3: users.LoginResponse
-	(*GetUserByIdRequest)(nil),       // 4: users.GetUserByIdRequest
-	(*GetUserByIdResponse)(nil),      // 5: users.GetUserByIdResponse
-	(*GetUserByEventIdRequest)(nil),  // 6: users.GetUserByEventIdRequest
-	(*GetUserByEventIdResponse)(nil), // 7: users.GetUserByEventIdResponse
-	(*AddUserToEventRequest)(nil),    // 8: users.AddUserToEventRequest
-	(*AddUserToEventResponse)(nil),   // 9: users.AddUserToEventResponse
-	(*User)(nil),                     // 10: users.User
-	(*Contact)(nil),                  // 11: users.Contact
-	(*Education)(nil),                // 12: users.Education
+	(*CreateUserRequest)(nil),         // 0: users.CreateUserRequest
+	(*CreateUserResponse)(nil),        // 1: users.CreateUserResponse
+	(*LoginRequest)(nil),              // 2: users.LoginRequest
+	(*LoginResponse)(nil),             // 3: users.LoginResponse
+	(*GetUserByIdRequest)(nil),        // 4: users.GetUserByIdRequest
+	(*GetUserByIdResponse)(nil),       // 5: users.GetUserByIdResponse
+	(*GetUsersByEventIdRequest)(nil),  // 6: users.GetUsersByEventIdRequest
+	(*GetUsersByEventIdResponse)(nil), // 7: users.GetUsersByEventIdResponse
+	(*AddUserToEventRequest)(nil),     // 8: users.AddUserToEventRequest
+	(*AddUserToEventResponse)(nil),    // 9: users.AddUserToEventResponse
+	(*User)(nil),                      // 10: users.User
+	(*Contact)(nil),                   // 11: users.Contact
+	(*Education)(nil),                 // 12: users.Education
 }
 var file_user_proto_depIdxs = []int32{
 	11, // 0: users.CreateUserRequest.contact:type_name -> users.Contact
 	12, // 1: users.CreateUserRequest.education:type_name -> users.Education
 	10, // 2: users.GetUserByIdResponse.user:type_name -> users.User
-	10, // 3: users.GetUserByEventIdResponse.users:type_name -> users.User
+	10, // 3: users.GetUsersByEventIdResponse.users:type_name -> users.User
 	11, // 4: users.User.contact:type_name -> users.Contact
 	12, // 5: users.User.education:type_name -> users.Education
 	0,  // 6: users.UserService.CreateUser:input_type -> users.CreateUserRequest
 	2,  // 7: users.UserService.Login:input_type -> users.LoginRequest
 	4,  // 8: users.UserService.GetUserById:input_type -> users.GetUserByIdRequest
-	6,  // 9: users.UserService.GetUserByEventId:input_type -> users.GetUserByEventIdRequest
+	6,  // 9: users.UserService.GetUsersByEventId:input_type -> users.GetUsersByEventIdRequest
 	8,  // 10: users.UserService.AddUserToEvent:input_type -> users.AddUserToEventRequest
 	1,  // 11: users.UserService.CreateUser:output_type -> users.CreateUserResponse
 	3,  // 12: users.UserService.Login:output_type -> users.LoginResponse
 	5,  // 13: users.UserService.GetUserById:output_type -> users.GetUserByIdResponse
-	7,  // 14: users.UserService.GetUserByEventId:output_type -> users.GetUserByEventIdResponse
+	7,  // 14: users.UserService.GetUsersByEventId:output_type -> users.GetUsersByEventIdResponse
 	9,  // 15: users.UserService.AddUserToEvent:output_type -> users.AddUserToEventResponse
 	11, // [11:16] is the sub-list for method output_type
 	6,  // [6:11] is the sub-list for method input_type

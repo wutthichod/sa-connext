@@ -48,8 +48,8 @@ func (c *UserServiceClient) GetUserByID(ctx context.Context, req *pb.GetUserById
 	return c.Client.GetUserById(ctx, req)
 }
 
-func (c *UserServiceClient) GetUserByEventID(ctx context.Context, req *pb.GetUserByEventIdRequest) (*pb.GetUserByEventIdResponse, error) {
-	return c.Client.GetUserByEventId(ctx, req)
+func (c *UserServiceClient) GetUserByEventID(ctx context.Context, req *pb.GetUsersByEventIdRequest) (*pb.GetUsersByEventIdResponse, error) {
+	return c.Client.GetUsersByEventId(ctx, req)
 }
 
 func (c *UserServiceClient) AddUserToEvent(ctx context.Context, req *pb.AddUserToEventRequest) (*pb.AddUserToEventResponse, error) {

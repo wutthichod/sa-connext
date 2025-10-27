@@ -52,7 +52,7 @@ func (h *gRPCHandler) Login(ctx context.Context, req *pb.LoginRequest) (*pb.Logi
 	}, nil
 }
 
-func (h *gRPCHandler) GetUserByID(ctx context.Context, req *pb.GetUserByIdRequest) (*pb.GetUserByIdResponse, error) {
+func (h *gRPCHandler) GetUserById(ctx context.Context, req *pb.GetUserByIdRequest) (*pb.GetUserByIdResponse, error) {
 
 	userID, err := strconv.ParseUint(req.GetUserId(), 10, 64)
 	if err != nil {
@@ -68,12 +68,12 @@ func (h *gRPCHandler) GetUserByID(ctx context.Context, req *pb.GetUserByIdReques
 
 }
 
-func (h *gRPCHandler) GetUserByEventID(ctx context.Context, req *pb.GetUserByEventIdRequest) (*pb.GetUserByEventIdResponse, error) {
+func (h *gRPCHandler) GetUsersByEventId(ctx context.Context, req *pb.GetUsersByEventIdRequest) (*pb.GetUsersByEventIdResponse, error) {
 	eventID, err := strconv.ParseUint(req.GetEventId(), 10, 64)
 	if err != nil {
 		return nil, err
 	}
-	users, err := h.service.GetUsersByEventId(ctx, &pb.GetUserByEventIdRequest{
+	users, err := h.service.GetUsersByEventId(ctx, &pb.GetUsersByEventIdRequest{
 		EventId: strconv.FormatUint(eventID, 10),
 	})
 	if err != nil {

@@ -1,0 +1,308 @@
+{
+	"info": {
+		"_postman_id": "sa-connext-api-collection",
+		"name": "SA-Connext API Collection",
+		"description": "Complete API collection for testing all endpoints",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{auth_token}}",
+				"type": "string"
+			}
+		]
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8080",
+			"type": "string"
+		},
+		{
+			"key": "auth_token",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Users",
+			"item": [
+				{
+					"name": "Register User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const jsonData = pm.response.json();",
+									"    pm.environment.set('auth_token', jsonData.jwtToken);",
+									"    pm.collectionVariables.set('auth_token', jsonData.jwtToken);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"john_doe\",\n  \"password\": \"SecurePass123\",\n  \"contact\": {\n    \"email\": \"john.doe@example.com\",\n    \"phone\": \"+1234567890\"\n  },\n  \"education\": {\n    \"university\": \"State University\",\n    \"major\": \"Computer Science\"\n  },\n  \"jobTitle\": \"Software Engineer\",\n  \"interests\": [\"coding\", \"music\", \"travel\"]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/users/register",
+							"host": ["{{base_url}}"],
+							"path": ["users", "register"]
+						},
+						"description": "Register a new user. The JWT token is automatically saved for subsequent requests."
+					}
+				},
+				{
+					"name": "Login User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const jsonData = pm.response.json();",
+									"    pm.environment.set('auth_token', jsonData.jwtToken);",
+									"    pm.collectionVariables.set('auth_token', jsonData.jwtToken);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"john.doe@example.com\",\n  \"password\": \"SecurePass123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/users/login",
+							"host": ["{{base_url}}"],
+							"path": ["users", "login"]
+						},
+						"description": "Login with email and password. The JWT token is automatically saved for subsequent requests."
+					}
+				},
+				{
+					"name": "Get User By ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/users/:id",
+							"host": ["{{base_url}}"],
+							"path": ["users", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1",
+									"description": "User ID"
+								}
+							]
+						},
+						"description": "Get user details by user ID. Requires authentication."
+					}
+				},
+				{
+					"name": "Get Users By Event ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/users/events/:event_id",
+							"host": ["{{base_url}}"],
+							"path": ["users", "events", ":event_id"],
+							"variable": [
+								{
+									"key": "event_id",
+									"value": "1",
+									"description": "Event ID"
+								}
+							]
+						},
+						"description": "Get all users participating in a specific event. Requires authentication."
+					}
+				}
+			]
+		},
+		{
+			"name": "Events",
+			"item": [
+				{
+					"name": "Create Event",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Tech Meetup 2024\",\n  \"detail\": \"A technology meetup event for developers and tech enthusiasts\",\n  \"location\": \"San Francisco Convention Center\",\n  \"date\": \"2024-03-15T10:00:00Z\",\n  \"joining_code\": \"TECH2024\",\n  \"organizer_id\": \"1\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/events/",
+							"host": ["{{base_url}}"],
+							"path": ["events", ""]
+						},
+						"description": "Create a new event. Requires authentication."
+					}
+				},
+				{
+					"name": "Get Event By ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/events/:eid",
+							"host": ["{{base_url}}"],
+							"path": ["events", ":eid"],
+							"variable": [
+								{
+									"key": "eid",
+									"value": "1",
+									"description": "Event ID"
+								}
+							]
+						},
+						"description": "Get event details by event ID. Requires authentication."
+					}
+				},
+				{
+					"name": "Join Event",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"event_id\": 1,\n  \"joining_code\": \"TECH2024\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/events/join",
+							"host": ["{{base_url}}"],
+							"path": ["events", "join"]
+						},
+						"description": "Join an event using the event ID and joining code. Requires authentication."
+					}
+				}
+			]
+		},
+		{
+			"name": "Chats",
+			"item": [
+				{
+					"name": "Create Chat",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"sender_id\": \"1\",\n  \"recipient_id\": \"2\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/chats/create",
+							"host": ["{{base_url}}"],
+							"path": ["chats", "create"]
+						},
+						"description": "Create a new chat between two users. Requires authentication."
+					}
+				},
+				{
+					"name": "Send Message",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"sender_id\": \"1\",\n  \"recipient_id\": \"2\",\n  \"message\": \"Hello! How are you?\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/chats/send",
+							"host": ["{{base_url}}"],
+							"path": ["chats", "send"]
+						},
+						"description": "Send a message in a chat. Requires authentication."
+					}
+				},
+				{
+					"name": "Get All Chats",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/chats/",
+							"host": ["{{base_url}}"],
+							"path": ["chats", ""]
+						},
+						"description": "Get all chats for the authenticated user. Requires authentication."
+					}
+				},
+				{
+					"name": "Get Chat Messages",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/chats/:id/messages",
+							"host": ["{{base_url}}"],
+							"path": ["chats", ":id", "messages"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "chat_id_here",
+									"description": "Chat ID"
+								}
+							]
+						},
+						"description": "Get all messages for a specific chat. Requires authentication."
+					}
+				}
+			]
+		}
+	]
+}
+
+

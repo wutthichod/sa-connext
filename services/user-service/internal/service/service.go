@@ -20,7 +20,7 @@ type Service interface {
 	CreateUser(ctx context.Context, req *pb.CreateUserRequest) (*string, error)
 	Login(ctx context.Context, pbReq *pb.LoginRequest) (*string, error)
 	GetUserById(ctx context.Context, pbReq *pb.GetUserByIdRequest) (*pb.GetUserByIdResponse, error)
-	GetUsersByEventId(ctx context.Context, pbReq *pb.GetUserByEventIdRequest) (*pb.GetUserByEventIdResponse, error)
+	GetUsersByEventId(ctx context.Context, pbReq *pb.GetUsersByEventIdRequest) (*pb.GetUsersByEventIdResponse, error)
 	AddUserToEvent(ctx context.Context, pbReq *pb.AddUserToEventRequest) (*pb.AddUserToEventResponse, error)
 }
 
@@ -116,7 +116,7 @@ func (s *service) GetUserById(ctx context.Context, pbReq *pb.GetUserByIdRequest)
 	}, nil
 }
 
-func (s *service) GetUsersByEventId(ctx context.Context, pbReq *pb.GetUserByEventIdRequest) (*pb.GetUserByEventIdResponse, error) {
+func (s *service) GetUsersByEventId(ctx context.Context, pbReq *pb.GetUsersByEventIdRequest) (*pb.GetUsersByEventIdResponse, error) {
 	eventId, err := strconv.ParseUint(pbReq.EventId, 10, 64)
 	if err != nil {
 		return nil, err
@@ -130,7 +130,7 @@ func (s *service) GetUsersByEventId(ctx context.Context, pbReq *pb.GetUserByEven
 	for i, user := range users {
 		pbUsers[i] = mapper.ToPbUser(user)
 	}
-	return &pb.GetUserByEventIdResponse{
+	return &pb.GetUsersByEventIdResponse{
 		Success: true,
 		Users:   pbUsers,
 	}, nil
