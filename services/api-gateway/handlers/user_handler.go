@@ -5,28 +5,34 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/wutthichod/sa-connext/services/api-gateway/contracts"
-	"github.com/wutthichod/sa-connext/services/api-gateway/grpc_clients/user_client"
+	"github.com/wutthichod/sa-connext/services/api-gateway/clients"
+	"github.com/wutthichod/sa-connext/services/api-gateway/dto"
+	"github.com/wutthichod/sa-connext/services/api-gateway/pkg/middlewares"
+	"github.com/wutthichod/sa-connext/shared/config"
+	"github.com/wutthichod/sa-connext/shared/contracts"
 	pb "github.com/wutthichod/sa-connext/shared/proto/user"
 )
 
 type UserHandler struct {
-	UserClient *user_client.UserServiceClient
+	UserClient *clients.UserServiceClient
+	Config     *config.Config
 }
 
-func NewUserHandler(uc *user_client.UserServiceClient) *UserHandler {
-	return &UserHandler{UserClient: uc}
+func NewUserHandler(uc *clients.UserServiceClient, config *config.Config) *UserHandler {
+	return &UserHandler{UserClient: uc, Config: config}
 }
 
 func (h *UserHandler) RegisterRoutes(app *fiber.App) {
 	userRoutes := app.Group("/users")
 	userRoutes.Post("/register", h.Register)
 	userRoutes.Post("/login", h.Login)
+	userRoutes.Get("/:id", middlewares.JWTMiddleware(*h.Config), h.GetUserByID)
+	userRoutes.Get("/events/:eid", middlewares.JWTMiddleware(*h.Config), h.GetUserByEventID)
 }
 
 func (h *UserHandler) Register(c *fiber.Ctx) error {
 	// Parse incoming JSON
-	var req contracts.RegisterRequest
+	var req dto.RegisterRequest
 	if err := c.BodyParser(&req); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid JSON format")
 	}
@@ -67,7 +73,7 @@ func (h *UserHandler) Register(c *fiber.Ctx) error {
 }
 
 func (h *UserHandler) Login(c *fiber.Ctx) error {
-	var req contracts.LoginRequest
+	var req dto.LoginRequest
 	if err := c.BodyParser(&req); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid JSON format")
 	}
@@ -93,5 +99,73 @@ func (h *UserHandler) Login(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"success":  res.GetSuccess(),
 		"jwtToken": res.GetJwtToken(),
+	})
+}
+
+func (h *UserHandler) GetUserByID(c *fiber.Ctx) error {
+	ctx := c.Context()
+
+	userID := c.Params("id")
+	if userID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(contracts.Resp{
+			Success: false,
+			Message: "User ID is required",
+		})
+	}
+	res, err := h.UserClient.GetUserByID(ctx, &pb.GetUserByIdRequest{
+		UserId: userID,
+	})
+	if err != nil {
+		log.Printf("Error calling user service: %v", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(contracts.Resp{
+			Success: false,
+			Message: "Internal server error",
+		})
+	}
+
+	if !res.Success {
+		log.Printf("Error calling user service: %v", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(contracts.Resp{
+			Success: false,
+			Message: "Internal server error",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(contracts.Resp{
+		Success: true,
+		Data:    res.GetUser(),
+	})
+}
+
+func (h *UserHandler) GetUserByEventID(c *fiber.Ctx) error {
+	ctx := c.Context()
+
+	eventID := c.Params("eid")
+	if eventID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(contracts.Resp{
+			Success: false,
+			Message: "Event ID is required",
+		})
+	}
+	res, err := h.UserClient.GetUserByEventID(ctx, &pb.GetUsersByEventIdRequest{
+		EventId: eventID,
+	})
+	if err != nil {
+		log.Printf("Error calling user service: %v", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(contracts.Resp{
+			Success: false,
+			Message: "Internal server error",
+		})
+	}
+	if !res.Success {
+		return c.Status(fiber.StatusInternalServerError).JSON(contracts.Resp{
+			Success: false,
+			Message: "Internal server error",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(contracts.Resp{
+		Success: true,
+		Data:    res.GetUsers(),
 	})
 }

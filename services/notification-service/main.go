@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	godotenv.Load("../.env") // ./ = โฟลเดอร์เดียวกับ main.go
+	godotenv.Load("./services/notification-service/.env") // ./ = โฟลเดอร์เดียวกับ main.go
 	config, err := config.InitConfig()
 	if err != nil {
 		log.Fatalf("Failed to initialize config: %v", err)

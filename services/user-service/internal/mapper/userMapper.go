@@ -1,6 +1,8 @@
 package mapper
 
 import (
+	"strconv"
+
 	"github.com/devfeel/mapper"
 	"github.com/jinzhu/copier"
 
@@ -54,4 +56,25 @@ func ToUserModel(dto *dto.UserDTO) *models.User {
 	}
 
 	return &user
+}
+
+func ToPbUser(user *models.User) *pb.User {
+	interests := make([]string, len(user.Interests))
+	for i, interest := range user.Interests {
+		interests[i] = interest.Name
+	}
+	return &pb.User{
+		UserId:    strconv.FormatUint(uint64(user.ID), 10),
+		Username:  user.Username,
+		JobTitle:  user.JobTitle,
+		Interests: interests,
+		Contact: &pb.Contact{
+			Email: user.Contact.Email,
+			Phone: user.Contact.Phone,
+		},
+		Education: &pb.Education{
+			University: user.Education.University,
+			Major:      user.Education.Major,
+		},
+	}
 }

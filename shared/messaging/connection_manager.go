@@ -74,5 +74,9 @@ func (cm *ConnectionManager) SendMessage(userID string, message contracts.WSMess
 	wrapper.mutex.Lock()
 	defer wrapper.mutex.Unlock()
 
-	return wrapper.conn.WriteJSON(message)
+	res := &contracts.Resp{
+		Success: true,
+		Data:    message.Data,
+	}
+	return wrapper.conn.WriteJSON(res)
 }

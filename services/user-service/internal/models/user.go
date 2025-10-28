@@ -8,16 +8,18 @@ import (
 type User struct {
 	gorm.Model
 
-	Username   string     `gorm:"type:varchar(50);not null;uniqueIndex"`
-	Password   string     `gorm:"type:varchar(255);not null"`
-	JobTitle   string     `gorm:"type:varchar(100)"`
-	Interests  []Interest `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE;"`
+	Username  string     `gorm:"type:varchar(50);not null;uniqueIndex"`
+	Password  string     `gorm:"type:varchar(255);not null"`
+	JobTitle  string     `gorm:"type:varchar(100)"`
+	Interests []Interest `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE;"`
 
-	ContactID   uint
-	Contact     Contact   `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
+	ContactID uint
+	Contact   Contact `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 
 	EducationID uint
 	Education   Education `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
+
+	CurrentEventID uint
 }
 
 // Contact represents the nested message Contact.

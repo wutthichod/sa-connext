@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"strconv"
 
 	"github.com/wutthichod/sa-connext/services/user-service/internal/mapper"
 	"github.com/wutthichod/sa-connext/services/user-service/internal/repository"
@@ -17,7 +18,10 @@ import (
 
 type Service interface {
 	CreateUser(ctx context.Context, req *pb.CreateUserRequest) (*string, error)
-	Login(ctx context.Context, email, password string) (*string, error)
+	Login(ctx context.Context, pbReq *pb.LoginRequest) (*string, error)
+	GetUserById(ctx context.Context, pbReq *pb.GetUserByIdRequest) (*pb.GetUserByIdResponse, error)
+	GetUsersByEventId(ctx context.Context, pbReq *pb.GetUsersByEventIdRequest) (*pb.GetUsersByEventIdResponse, error)
+	AddUserToEvent(ctx context.Context, pbReq *pb.AddUserToEventRequest) (*pb.AddUserToEventResponse, error)
 }
 
 type service struct {
@@ -71,9 +75,9 @@ func (s *service) CreateUser(ctx context.Context, req *pb.CreateUserRequest) (*s
 	return &token, nil
 }
 
-func (s *service) Login(ctx context.Context, email, password string) (*string, error) {
+func (s *service) Login(ctx context.Context, pbReq *pb.LoginRequest) (*string, error) {
 
-	user, err := s.repo.GetUserByEmail(ctx, email)
+	user, err := s.repo.GetUserByEmail(ctx, pbReq.Email)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +85,7 @@ func (s *service) Login(ctx context.Context, email, password string) (*string, e
 		return nil, errors.New("invalid email or password")
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
+	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(pbReq.Password))
 	if err != nil {
 		return nil, errors.New("invalid email or password")
 	}
@@ -92,4 +96,60 @@ func (s *service) Login(ctx context.Context, email, password string) (*string, e
 	}
 
 	return &token, nil
+}
+
+func (s *service) GetUserById(ctx context.Context, pbReq *pb.GetUserByIdRequest) (*pb.GetUserByIdResponse, error) {
+	userId, err := strconv.ParseUint(pbReq.UserId, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	user, err := s.repo.GetUserById(ctx, uint(userId))
+	if err != nil {
+		return nil, err
+	}
+	if user == nil {
+		return nil, errors.New("user not found")
+	}
+	return &pb.GetUserByIdResponse{
+		Success: true,
+		User:    mapper.ToPbUser(user),
+	}, nil
+}
+
+func (s *service) GetUsersByEventId(ctx context.Context, pbReq *pb.GetUsersByEventIdRequest) (*pb.GetUsersByEventIdResponse, error) {
+	eventId, err := strconv.ParseUint(pbReq.EventId, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	users, err := s.repo.GetUsersByEventId(ctx, uint(eventId))
+	if err != nil {
+		return nil, err
+	}
+
+	pbUsers := make([]*pb.User, len(users))
+	for i, user := range users {
+		pbUsers[i] = mapper.ToPbUser(user)
+	}
+	return &pb.GetUsersByEventIdResponse{
+		Success: true,
+		Users:   pbUsers,
+	}, nil
+}
+
+func (s *service) AddUserToEvent(ctx context.Context, pbReq *pb.AddUserToEventRequest) (*pb.AddUserToEventResponse, error) {
+	eventId, err := strconv.ParseUint(pbReq.EventId, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	userId, err := strconv.ParseUint(pbReq.UserId, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	err = s.repo.AddUserToEvent(ctx, uint(eventId), uint(userId))
+	if err != nil {
+		return nil, err
+	}
+	return &pb.AddUserToEventResponse{
+		Success: true,
+	}, nil
 }

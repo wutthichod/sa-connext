@@ -1,4 +1,4 @@
-package contracts
+package dto
 
 type RegisterRequest struct {
 	Username  string    `json:"username" validate:"required,min=2,max=50"`
@@ -22,4 +22,14 @@ type Education struct {
 type LoginRequest struct {
 	Email    string `json:"email" validate:"required,min=2,max=50"`
 	Password string `json:"password" validate:"required,min=8"`
+}
+
+type User struct {
+	UserID    string   `json:"user_id"`
+	Username  string   `json:"username"`
+	Email     string   `json:"email"`
+	Phone     string   `json:"phone"`
+	Major     string   `json:"major"`
+	JobTitle  string   `json:"job_title"`
+	Interests []string `json:"interests"`
 }

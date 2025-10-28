@@ -1,9 +1,8 @@
-package chat_client
+package clients
 
 import (
 	"context"
 
-	"github.com/wutthichod/sa-connext/shared/config"
 	pb "github.com/wutthichod/sa-connext/shared/proto/chat"
 
 	"google.golang.org/grpc"
@@ -15,9 +14,9 @@ type ChatServiceClient struct {
 	conn   *grpc.ClientConn
 }
 
-func NewChatServiceClient(config config.Config) (*ChatServiceClient, error) {
+func NewChatServiceClient(addr string) (*ChatServiceClient, error) {
 
-	conn, err := grpc.NewClient(config.App().Chat, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
 	}
@@ -41,4 +40,12 @@ func (c *ChatServiceClient) CreateChat(ctx context.Context, req *pb.CreateChatRe
 
 func (c *ChatServiceClient) SendMessage(ctx context.Context, req *pb.SendMessageRequest) (*pb.SendMessageResponse, error) {
 	return c.Client.SendMessage(ctx, req)
+}
+
+func (c *ChatServiceClient) GetChats(ctx context.Context, req *pb.GetChatsRequest) (*pb.GetChatsResponse, error) {
+	return c.Client.GetChats(ctx, req)
+}
+
+func (c *ChatServiceClient) GetChatMessagesByChatId(ctx context.Context, req *pb.GetMessagesByChatIdRequest) (*pb.GetMessagesByChatIdResponse, error) {
+	return c.Client.GetMessagesByChatId(ctx, req)
 }

@@ -7,7 +7,7 @@ services:
       POSTGRES_USER: newuser
       POSTGRES_PASSWORD: newpassword
     volumes:
-      - postgres_data_new:/var/lib/postgresql/data
+      - my_postgres_data:/var/lib/postgresql
     ports:
       - "5433:5432"   # 👈 change external port to 5433
     restart: unless-stopped
@@ -25,4 +25,4 @@ services:
     restart: unless-stopped
 
 volumes:
-  postgres_data_new:
+  my_postgres_data:

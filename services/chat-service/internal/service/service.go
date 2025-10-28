@@ -37,34 +37,27 @@ func (s *ChatService) CreateChat(ctx context.Context, req *pb.CreateChatRequest)
 
 	var existingChat models.Chat
 	err := chatCollection.FindOne(ctx, filter).Decode(&existingChat)
-	if err == nil {
-		return &pb.CreateChatResponse{
-			SenderId:    req.SenderId,
-			RecipientId: req.RecipientId,
-			ChatId:      existingChat.ID.Hex(),
-		}, nil
-	}
-
-	if err != mongo.ErrNoDocuments {
+	if err != nil && err != mongo.ErrNoDocuments {
 		return nil, fmt.Errorf("failed to check existing chat: %v", err)
-	}
+	} else if err != nil && err == mongo.ErrNoDocuments {
+		newChat := &models.Chat{
+			Participants: []string{req.SenderId, req.RecipientId},
+			CreatedAt:    time.Now(),
+			UpdatedAt:    time.Now(),
+		}
 
-	newChat := &models.Chat{
-		Participants: []string{req.SenderId, req.RecipientId},
-		CreatedAt:    time.Now(),
-	}
+		res, err := chatCollection.InsertOne(ctx, newChat)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create chat: %v", err)
+		}
 
-	res, err := chatCollection.InsertOne(ctx, newChat)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create chat: %v", err)
+		existingChat.ID = res.InsertedID.(primitive.ObjectID)
 	}
-
-	chatID := res.InsertedID.(primitive.ObjectID).Hex()
 
 	return &pb.CreateChatResponse{
 		SenderId:    req.SenderId,
 		RecipientId: req.RecipientId,
-		ChatId:      chatID,
+		ChatId:      existingChat.ID.Hex(),
 	}, nil
 }
 
@@ -102,6 +95,17 @@ func (s *ChatService) SendMessage(ctx context.Context, req *pb.SendMessageReques
 		return nil, fmt.Errorf("failed to save message: %v", err)
 	}
 
+	filter = bson.M{"_id": existingChat.ID}
+	update := bson.M{
+		"$set": bson.M{
+			"updated_at": time.Now(),
+		},
+	}
+	_, err = chatCollection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update chat: %v", err)
+	}
+
 	message.ID = msgRes.InsertedID.(primitive.ObjectID)
 
 	// Publish to RabbitMQ
@@ -122,5 +126,95 @@ func (s *ChatService) SendMessage(ctx context.Context, req *pb.SendMessageReques
 	return &pb.SendMessageResponse{
 		MessageId: message.ID.Hex(),
 		Status:    "sent",
+	}, nil
+}
+
+func (s *ChatService) GetChats(ctx context.Context, req *pb.GetChatsRequest) (*pb.GetChatsResponse, error) {
+	chatCollection := s.db.Collection("chats")
+
+	filter := bson.M{
+		"participants": bson.M{
+			"$all": []string{req.UserId},
+		},
+	}
+
+	var chats []*pb.Chat
+	cur, err := chatCollection.Find(ctx, filter)
+	if err != nil {
+		return &pb.GetChatsResponse{
+			Success: false,
+			Chats:   nil,
+		}, err
+	}
+	defer cur.Close(ctx)
+
+	if !cur.TryNext(ctx) {
+		return &pb.GetChatsResponse{
+			Success: false,
+			Chats:   nil,
+		}, nil
+	}
+	for cur.Next(ctx) {
+		var chat models.Chat
+		if err := cur.Decode(&chat); err != nil {
+			return &pb.GetChatsResponse{
+				Success: false,
+				Chats:   nil,
+			}, err
+		}
+		otherParticipantId := chat.Participants[0]
+		if otherParticipantId == req.UserId {
+			otherParticipantId = chat.Participants[1]
+		}
+		chats = append(chats, &pb.Chat{
+			ChatId:             chat.ID.Hex(),
+			OtherParticipantId: otherParticipantId,
+			CreatedAt:          chat.CreatedAt.Format(time.RFC3339),
+			UpdatedAt:          chat.UpdatedAt.Format(time.RFC3339),
+		})
+	}
+	return &pb.GetChatsResponse{
+		Success: true,
+		Chats:   chats,
+	}, nil
+}
+
+func (s *ChatService) GetMessagesByChatId(ctx context.Context, req *pb.GetMessagesByChatIdRequest) (*pb.GetMessagesByChatIdResponse, error) {
+	messageCollection := s.db.Collection("messages")
+
+	chatObjId, err := primitive.ObjectIDFromHex(req.ChatId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse string to object id: %v", err)
+	}
+	filter := bson.M{
+		"chat_id": chatObjId,
+	}
+
+	var messages []*pb.Message
+	cur, err := messageCollection.Find(ctx, filter)
+	if err != nil {
+		return &pb.GetMessagesByChatIdResponse{
+			Success:  false,
+			Messages: nil,
+		}, err
+	}
+	defer cur.Close(ctx)
+
+	for cur.Next(ctx) {
+		var message models.Message
+		if err := cur.Decode(&message); err != nil {
+			return nil, fmt.Errorf("failed to decode message: %v", err)
+		}
+		messages = append(messages, &pb.Message{
+			MessageId:   message.ID.Hex(),
+			SenderId:    message.SenderID,
+			RecipientId: message.RecipientID,
+			Message:     message.Message,
+			CreatedAt:   message.CreatedAt.Format(time.RFC3339),
+		})
+	}
+	return &pb.GetMessagesByChatIdResponse{
+		Success:  true,
+		Messages: messages,
 	}, nil
 }
