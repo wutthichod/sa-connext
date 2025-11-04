@@ -1,13 +1,15 @@
-# Tiltfile for sa-connext (Docker Desktop)
+# ============================================================================
+# Docker Builds
+# ============================================================================
 
-# --- 1. Docker Builds (This part is correct) ---
 docker_build(
     'connext-api-gateway:latest',
-    '.', # 👈 Context คือราก
+    '.',
     dockerfile='infra/dockerfile/api-gateway',
-    build_args={'SERVICE_NAME': 'api-gateway'}, # 👈 เพิ่ม Args
-    only=['shared/', 'services/api-gateway/', 'go.mod', 'go.sum'] # 👈 เฝ้าดูไฟล์
+    build_args={'SERVICE_NAME': 'api-gateway'},
+    only=['shared/', 'services/api-gateway/', 'go.mod', 'go.sum']
 )
+
 docker_build(
     'connext-user-service:latest',
     '.',
@@ -15,6 +17,7 @@ docker_build(
     build_args={'SERVICE_NAME': 'user-service'},
     only=['shared/', 'services/user-service/', 'go.mod', 'go.sum']
 )
+
 docker_build(
     'connext-chat-service:latest',
     '.',
@@ -22,6 +25,7 @@ docker_build(
     build_args={'SERVICE_NAME': 'chat-service'},
     only=['shared/', 'services/chat-service/', 'go.mod', 'go.sum']
 )
+
 docker_build(
     'connext-event-service:latest',
     '.',
@@ -29,6 +33,7 @@ docker_build(
     build_args={'SERVICE_NAME': 'event-service'},
     only=['shared/', 'services/event-service/', 'go.mod', 'go.sum']
 )
+
 docker_build(
     'connext-notification-service:latest',
     '.',
@@ -37,32 +42,43 @@ docker_build(
     only=['shared/', 'services/notification-service/', 'go.mod', 'go.sum']
 )
 
-# --- 2. Apply ALL k8s YAMLs ---
-# (This part is correct)
+# ============================================================================
+# Kubernetes Manifests
+# k8s_yaml() automatically watches these files for changes
+# ============================================================================
+
 k8s_yaml([
+    # Infrastructure
     'infra/k8s/app-config.yaml',
     'infra/k8s/app-secrets.yaml',
     'infra/k8s/db-secrets.yaml',
     'infra/k8s/postgres-db.yaml',
     'infra/k8s/pgadmin-db.yaml',
-
-    'infra/k8s/api-gateway-service-deployment.yaml',
-
+    
+    # Services
     'infra/k8s/user-service-deployment.yaml',
-
     'infra/k8s/chat-service-deployment.yaml',
-
     'infra/k8s/event-service-deployment.yaml',
-
     'infra/k8s/notification-service-deployment.yaml',
+    
+    # Gateway
+    'infra/k8s/api-gateway-service-deployment.yaml',
 ])
 
-# --- 3. Register Resources (with Dependencies) ---
+# ============================================================================
+# Infrastructure Resources
+# ============================================================================
 
 k8s_resource(
-    objects=['mongodb-secret','pgadmin-secret','postgres-secret'],
-    new_name='Databases Setup',
-    labels='Infra'
+    objects=['mongodb-secret', 'pgadmin-secret', 'postgres-secret'],
+    new_name='Database Secrets',
+    labels='Infrastructure'
+)
+
+k8s_resource(
+    objects=['app-secret', 'app-config'],
+    new_name='App Config & Secrets',
+    labels='Infrastructure'
 )
 
 k8s_resource(
@@ -72,57 +88,66 @@ k8s_resource(
 )
 
 k8s_resource(
-    objects=['app-secret','app-config'],
-    new_name='Services Setup',
-    labels='Infra'
-)
-
-
-# "ลงทะเบียน" Postgres เพื่อให้คนอื่นรอได้
-k8s_resource(
     workload='postgres-deployment',
     new_name='Postgres',
+    resource_deps=['Database Secrets', 'Postgres Volume'],
     labels='Database'
 )
 
 k8s_resource(
     workload='pgadmin-deployment',
     new_name='PgAdmin',
+    resource_deps=['Postgres'],
     port_forwards=5051,
     labels='Database'
 )
 
-# API Gateway (ไม่รอ DB)
-k8s_resource(workload='api-gateway-deployment',new_name='API Gateway', port_forwards=8080,labels='Gateway')
+# ============================================================================
+# Application Services
+# ============================================================================
 
-# User Service (รอ DB)
 k8s_resource(
-    workload='user-service-deployment', # 👈 [FIX]
+    workload='user-service-deployment',
     new_name='User Service',
-    resource_deps=['Postgres'],
-    labels='Service',
+    resource_deps=['Postgres', 'App Config & Secrets'],
+    labels='Service'
 )
 
-# Chat Service (รอ DB)
 k8s_resource(
-    workload='chat-service-deployment', # 👈 [FIX]
+    workload='chat-service-deployment',
     new_name='Chat Service',
-    resource_deps=['Postgres'],
-    labels='Service',
+    resource_deps=['Postgres', 'App Config & Secrets'],
+    labels='Service'
 )
 
-# Event Service (รอ DB)
 k8s_resource(
-    workload='event-service-deployment', # 👈 [FIX]
+    workload='event-service-deployment',
     new_name='Event Service',
-    resource_deps=['Postgres'],
-    labels='Service',
+    resource_deps=['Postgres', 'App Config & Secrets'],
+    labels='Service'
 )
 
-# Notification Service (รอ DB)
 k8s_resource(
-    workload='notification-service-deployment', # 👈 [FIX]
+    workload='notification-service-deployment',
     new_name='Notification Service',
-    labels='Service',
+    resource_deps=['App Config & Secrets'],
+    labels='Service'
 )
 
+# ============================================================================
+# API Gateway
+# ============================================================================
+
+k8s_resource(
+    workload='api-gateway-deployment',
+    new_name='API Gateway',
+    resource_deps=[
+        'User Service',
+        'Chat Service',
+        'Event Service',
+        'Notification Service',
+        'App Config & Secrets'
+    ],
+    port_forwards=8080,
+    labels='Gateway'
+)
