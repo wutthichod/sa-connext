@@ -12,6 +12,7 @@ import (
 	"github.com/wutthichod/sa-connext/services/event-service/internal/repository"
 	"github.com/wutthichod/sa-connext/shared/contracts"
 	pb "github.com/wutthichod/sa-connext/shared/proto/user"
+	"github.com/wutthichod/sa-connext/shared/utils"
 	"gorm.io/gorm"
 )
 
@@ -44,7 +45,34 @@ func (s *eventService) CreateEvent(ctx context.Context, req *contracts.CreateEve
 		return nil, fmt.Errorf("%w: name and organizer_id are required", ErrValidation)
 	}
 
-	// 2. Data Transformation (Request DTO -> DB Model)
+	// 2. Generate unique event code (with retry mechanism)
+	const maxRetries = 10
+	var joiningCode string
+	var err error
+
+	for i := 0; i < maxRetries; i++ {
+		joiningCode, err = utils.GenerateEventCode()
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate event code: %w", err)
+		}
+
+		// Check if code already exists
+		exists, err := s.repo.ExistsByJoiningCode(ctx, joiningCode)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check code uniqueness: %w", err)
+		}
+
+		if !exists {
+			break // Found a unique code
+		}
+
+		// If we've exhausted all retries, return an error
+		if i == maxRetries-1 {
+			return nil, fmt.Errorf("failed to generate unique event code after %d attempts", maxRetries)
+		}
+	}
+
+	// 3. Data Transformation (Request DTO -> DB Model)
 	// This is a key responsibility of the service layer.
 	eventDate, err := time.Parse(time.RFC3339, req.Date)
 	if err != nil {
@@ -56,19 +84,20 @@ func (s *eventService) CreateEvent(ctx context.Context, req *contracts.CreateEve
 		Detail:      req.Detail,
 		Location:    req.Location,
 		Date:        eventDate,
-		JoiningCode: req.JoiningCode,
+		JoiningCode: joiningCode,
 		OrganizerID: req.OrganizerId,
 	}
 
-	// 3. Call Repository
+	// 4. Call Repository
 	if err := s.repo.Create(ctx, event); err != nil {
 		// This could be a DB constraint error, etc.
 		return nil, fmt.Errorf("failed to create event in db: %w", err)
 	}
 
-	// 4. Transform Response (DB Model -> Response DTO)
+	// 5. Transform Response (DB Model -> Response DTO)
 	return &contracts.CreateEventResponse{
-		EventID: event.ID,
+		EventID:     event.ID,
+		JoiningCode: joiningCode,
 	}, nil
 }
 

@@ -12,6 +12,7 @@ type EventRepositoryInterface interface {
 	Create(ctx context.Context, event *models.Event) error
 	GetByID(ctx context.Context, id uint) (*models.Event, error)
 	GetAll(ctx context.Context) ([]*models.Event, error)
+	ExistsByJoiningCode(ctx context.Context, joiningCode string) (bool, error)
 }
 
 // eventRepository implements the interface using GORM
@@ -49,4 +50,16 @@ func (r *eventRepository) GetAll(ctx context.Context) ([]*models.Event, error) {
 		return nil, err
 	}
 	return events, nil
+}
+
+// ExistsByJoiningCode checks if an event with the given joining code already exists
+func (r *eventRepository) ExistsByJoiningCode(ctx context.Context, joiningCode string) (bool, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Model(&models.Event{}).
+		Where("joining_code = ?", joiningCode).
+		Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }
