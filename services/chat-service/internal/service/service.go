@@ -63,29 +63,54 @@ func (s *ChatService) CreateChat(ctx context.Context, req *pb.CreateChatRequest)
 
 // SendMessage saves a message and publishes to RabbitMQ
 func (s *ChatService) SendMessage(ctx context.Context, req *pb.SendMessageRequest) (*pb.SendMessageResponse, error) {
-	// Find the chat document for the two users
+	// Find the chat document by chat_id
 	chatCollection := s.db.Collection("chats")
 	messageCollection := s.db.Collection("messages")
 
-	filter := bson.M{
-		"participants": bson.M{
-			"$all": []string{req.SenderId, req.RecipientId},
-		},
+	chatObjId, err := primitive.ObjectIDFromHex(req.ChatId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse chat_id to object id: %v", err)
 	}
 
+	filter := bson.M{"_id": chatObjId}
+
 	var existingChat models.Chat
-	err := chatCollection.FindOne(ctx, filter).Decode(&existingChat)
+	err = chatCollection.FindOne(ctx, filter).Decode(&existingChat)
 	if err == mongo.ErrNoDocuments {
-		return nil, fmt.Errorf("no existing chat for these users yet: %v", err)
+		return nil, fmt.Errorf("chat not found: %v", err)
 	}
 	if err != nil {
 		return nil, err
 	}
 
+	// Verify sender is a participant in the chat
+	senderIsParticipant := false
+	for _, participant := range existingChat.Participants {
+		if participant == req.SenderId {
+			senderIsParticipant = true
+			break
+		}
+	}
+	if !senderIsParticipant {
+		return nil, fmt.Errorf("sender is not a participant in this chat")
+	}
+
+	// Get recipient_id (the other participant)
+	var recipientID string
+	for _, participant := range existingChat.Participants {
+		if participant != req.SenderId {
+			recipientID = participant
+			break
+		}
+	}
+	if recipientID == "" {
+		return nil, fmt.Errorf("could not determine recipient from chat participants")
+	}
+
 	message := &models.Message{
 		ChatID:      existingChat.ID,
 		SenderID:    req.SenderId,
-		RecipientID: req.RecipientId,
+		RecipientID: recipientID,
 		Message:     req.Message,
 		CreatedAt:   time.Now(),
 	}
@@ -115,7 +140,7 @@ func (s *ChatService) SendMessage(ctx context.Context, req *pb.SendMessageReques
 	}
 
 	msg := contracts.AmqpMessage{
-		OwnerID: req.RecipientId,
+		OwnerID: recipientID,
 		Data:    messageData,
 	}
 

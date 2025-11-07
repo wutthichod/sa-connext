@@ -24,7 +24,6 @@ type GetEventResponse struct {
 }
 
 type JoinEventRequest struct {
-	EventID     uint   `json:"event_id"`
 	UserID      uint   `json:"user_id"`
 	JoiningCode string `json:"joining_code"`
 }

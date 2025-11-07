@@ -105,17 +105,17 @@ func (h *ChatHandler) SendMessage(c *fiber.Ctx) error {
 		})
 	}
 
-	if req.RecipientID == "" || req.Message == "" {
+	if req.ChatID == "" || req.Message == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(contracts.Resp{
 			Success: false,
-			Message: "required recipientID",
+			Message: "required chat_id and message",
 		})
 	}
 
 	_, err := h.ChatClient.SendMessage(c.Context(), &pb.SendMessageRequest{
-		SenderId:    senderID,
-		RecipientId: req.RecipientID,
-		Message:     req.Message,
+		SenderId: senderID,
+		ChatId:   req.ChatID,
+		Message:  req.Message,
 	})
 	if err != nil {
 		return errors.HandleGRPCError(c, err)

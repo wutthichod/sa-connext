@@ -13,6 +13,7 @@ type EventRepositoryInterface interface {
 	GetByID(ctx context.Context, id uint) (*models.Event, error)
 	GetAll(ctx context.Context) ([]*models.Event, error)
 	ExistsByJoiningCode(ctx context.Context, joiningCode string) (bool, error)
+	GetByJoiningCode(ctx context.Context, joiningCode string) (*models.Event, error)
 }
 
 // eventRepository implements the interface using GORM
@@ -62,4 +63,15 @@ func (r *eventRepository) ExistsByJoiningCode(ctx context.Context, joiningCode s
 		return false, err
 	}
 	return count > 0, nil
+}
+
+// GetByJoiningCode finds a single event by its joining code
+func (r *eventRepository) GetByJoiningCode(ctx context.Context, joiningCode string) (*models.Event, error) {
+	var event models.Event
+	// GORM will return gorm.ErrRecordNotFound if no record is found
+	err := r.db.WithContext(ctx).First(&event, "joining_code = ?", joiningCode).Error
+	if err != nil {
+		return nil, err
+	}
+	return &event, nil
 }

@@ -5,8 +5,8 @@ type CreateChatRequest struct {
 }
 
 type SendMessageRequest struct {
-	RecipientID string `json:"recipient_id"`
-	Message     string `json:"message"`
+	ChatID  string `json:"chat_id"`
+	Message string `json:"message"`
 }
 
 type GetChatsResponse struct {

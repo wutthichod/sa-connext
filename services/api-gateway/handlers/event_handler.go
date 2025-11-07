@@ -112,7 +112,6 @@ func (h *EventHandler) JoinEvent(c *fiber.Ctx) error {
 	userID := c.Locals("userID").(uint)
 
 	contract := &contracts.JoinEventRequest{
-		EventID:     req.EventID,
 		UserID:      userID,
 		JoiningCode: req.JoiningCode,
 	}

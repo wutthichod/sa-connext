@@ -136,7 +136,7 @@ func (x *CreateChatResponse) GetChatId() string {
 type SendMessageRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	SenderId      string                 `protobuf:"bytes,1,opt,name=sender_id,json=senderId,proto3" json:"sender_id,omitempty"`
-	RecipientId   string                 `protobuf:"bytes,2,opt,name=recipient_id,json=recipientId,proto3" json:"recipient_id,omitempty"`
+	ChatId        string                 `protobuf:"bytes,2,opt,name=chat_id,json=chatId,proto3" json:"chat_id,omitempty"`
 	Message       string                 `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -179,9 +179,9 @@ func (x *SendMessageRequest) GetSenderId() string {
 	return ""
 }
 
-func (x *SendMessageRequest) GetRecipientId() string {
+func (x *SendMessageRequest) GetChatId() string {
 	if x != nil {
-		return x.RecipientId
+		return x.ChatId
 	}
 	return ""
 }
@@ -593,10 +593,10 @@ const file_chat_proto_rawDesc = "" +
 	"\x12CreateChatResponse\x12\x1b\n" +
 	"\tsender_id\x18\x01 \x01(\tR\bsenderId\x12!\n" +
 	"\frecipient_id\x18\x02 \x01(\tR\vrecipientId\x12\x17\n" +
-	"\achat_id\x18\x03 \x01(\tR\x06chatId\"n\n" +
+	"\achat_id\x18\x03 \x01(\tR\x06chatId\"d\n" +
 	"\x12SendMessageRequest\x12\x1b\n" +
-	"\tsender_id\x18\x01 \x01(\tR\bsenderId\x12!\n" +
-	"\frecipient_id\x18\x02 \x01(\tR\vrecipientId\x12\x18\n" +
+	"\tsender_id\x18\x01 \x01(\tR\bsenderId\x12\x17\n" +
+	"\achat_id\x18\x02 \x01(\tR\x06chatId\x12\x18\n" +
 	"\amessage\x18\x03 \x01(\tR\amessage\"L\n" +
 	"\x13SendMessageResponse\x12\x1d\n" +
 	"\n" +

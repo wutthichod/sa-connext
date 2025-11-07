@@ -152,19 +152,17 @@ func (s *eventService) GetAllEvents(ctx context.Context) ([]*contracts.GetEventR
 }
 
 func (s *eventService) JoinEvent(ctx context.Context, req *contracts.JoinEventRequest) (bool, error) {
-
-	event, err := s.repo.GetByID(ctx, req.EventID)
+	event, err := s.repo.GetByJoiningCode(ctx, req.JoiningCode)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, nil // Event not found with this code
+		}
 		return false, err
-	}
-
-	if req.JoiningCode != event.JoiningCode {
-		return false, nil
 	}
 
 	addUserToEventReq := &pb.AddUserToEventRequest{
 		UserId:  strconv.FormatUint(uint64(req.UserID), 10),
-		EventId: strconv.FormatUint(uint64(req.EventID), 10),
+		EventId: strconv.FormatUint(uint64(event.ID), 10),
 	}
 
 	result, err := s.userClient.AddUserToEvent(ctx, addUserToEventReq)
