@@ -80,3 +80,13 @@ func (cm *ConnectionManager) SendMessage(userID string, message contracts.WSMess
 	}
 	return wrapper.conn.WriteJSON(res)
 }
+
+func (cm *ConnectionManager) GetAllUserIDs() []string {
+	cm.mutex.RLock()
+	defer cm.mutex.RUnlock()
+	userIDs := make([]string, 0, len(cm.connections))
+	for userID := range cm.connections {
+		userIDs = append(userIDs, userID)
+	}
+	return userIDs
+}

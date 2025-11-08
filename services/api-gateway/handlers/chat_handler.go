@@ -14,20 +14,23 @@ import (
 	"github.com/wutthichod/sa-connext/shared/config"
 	"github.com/wutthichod/sa-connext/shared/contracts"
 	"github.com/wutthichod/sa-connext/shared/messaging"
-	pb "github.com/wutthichod/sa-connext/shared/proto/chat"
+	pbChat "github.com/wutthichod/sa-connext/shared/proto/chat"
+	pbUser "github.com/wutthichod/sa-connext/shared/proto/user"
 )
 
 type ChatHandler struct {
 	ChatClient  *clients.ChatServiceClient
+	UserClient  *clients.UserServiceClient
 	ConnManager *messaging.ConnectionManager
 	Queue       *messaging.QueueConsumer
 	Config      *config.Config
 }
 
 // Constructor
-func NewChatHandler(client *clients.ChatServiceClient, connManager *messaging.ConnectionManager, queue *messaging.QueueConsumer, config *config.Config) *ChatHandler {
+func NewChatHandler(chatClient *clients.ChatServiceClient, userClient *clients.UserServiceClient, connManager *messaging.ConnectionManager, queue *messaging.QueueConsumer, config *config.Config) *ChatHandler {
 	return &ChatHandler{
-		ChatClient:  client,
+		ChatClient:  chatClient,
+		UserClient:  userClient,
 		ConnManager: connManager,
 		Queue:       queue,
 		Config:      config,
@@ -42,6 +45,7 @@ func (h *ChatHandler) RegisterRoutes(app *fiber.App) {
 	chatRoutes.Get("/ws/:id", middlewares.JWTMiddleware(*h.Config), websocket.New(h.WebSocketHandler))
 	chatRoutes.Get("/", middlewares.JWTMiddleware(*h.Config), h.GetChats)
 	chatRoutes.Get("/:id/messages", middlewares.JWTMiddleware(*h.Config), h.GetChatMessagesByChatId)
+	chatRoutes.Get("/users", middlewares.JWTMiddleware(*h.Config), h.GetOnlineUsers)
 }
 
 // WebSocket handler extracted for clarity
@@ -80,7 +84,7 @@ func (h *ChatHandler) CreateChat(c *fiber.Ctx) error {
 		})
 	}
 
-	_, err := h.ChatClient.CreateChat(c.Context(), &pb.CreateChatRequest{
+	_, err := h.ChatClient.CreateChat(c.Context(), &pbChat.CreateChatRequest{
 		SenderId:    senderID,
 		RecipientId: req.RecipientID,
 	})
@@ -112,7 +116,7 @@ func (h *ChatHandler) SendMessage(c *fiber.Ctx) error {
 		})
 	}
 
-	_, err := h.ChatClient.SendMessage(c.Context(), &pb.SendMessageRequest{
+	_, err := h.ChatClient.SendMessage(c.Context(), &pbChat.SendMessageRequest{
 		SenderId:    senderID,
 		RecipientId: req.RecipientID,
 		Message:     req.Message,
@@ -129,7 +133,7 @@ func (h *ChatHandler) SendMessage(c *fiber.Ctx) error {
 // Get chats by user id
 func (h *ChatHandler) GetChats(c *fiber.Ctx) error {
 	userID := c.Locals("userID").(uint)
-	res, err := h.ChatClient.GetChats(c.Context(), &pb.GetChatsRequest{
+	res, err := h.ChatClient.GetChats(c.Context(), &pbChat.GetChatsRequest{
 		UserId: fmt.Sprintf("%d", userID),
 	})
 	if err != nil {
@@ -161,7 +165,7 @@ func (h *ChatHandler) GetChatMessagesByChatId(c *fiber.Ctx) error {
 	if chatID == "" {
 		return fiber.NewError(fiber.StatusBadRequest, "Chat ID is required")
 	}
-	res, err := h.ChatClient.GetChatMessagesByChatId(c.Context(), &pb.GetMessagesByChatIdRequest{
+	res, err := h.ChatClient.GetChatMessagesByChatId(c.Context(), &pbChat.GetMessagesByChatIdRequest{
 		ChatId: chatID,
 	})
 	if err != nil {
@@ -192,4 +196,42 @@ func (h *ChatHandler) ListenRabbit() {
 	if err := h.Queue.Start(); err != nil {
 		log.Fatal("Failed to start RabbitMQ consumer:", err)
 	}
+}
+
+func (h *ChatHandler) GetOnlineUsers(c *fiber.Ctx) error {
+	ctx := c.Context()
+	myID_uint := c.Locals("userID").(uint)
+	myID := strconv.FormatUint(uint64(myID_uint), 10)
+	onlineUsers := h.ConnManager.GetAllUserIDs()
+
+	for _, userID := range onlineUsers {
+		if userID == myID {
+			continue
+		}
+		res, err := h.UserClient.GetUserByID(ctx, &pbUser.GetUserByIdRequest{
+			UserId: userID,
+		})
+		if err != nil {
+			return errors.HandleGRPCError(c, err)
+		}
+		if !res.Success {
+			return errors.HandleGRPCError(c, err)
+		}
+	}
+	res, err := h.UserClient.GetUserByID(ctx, &pbUser.GetUserByIdRequest{
+		UserId: myID,
+	})
+	if err != nil {
+		return errors.HandleGRPCError(c, err)
+	}
+
+	if !res.Success {
+		return errors.HandleGRPCError(c, err)
+	}
+	return c.Status(fiber.StatusOK).JSON(contracts.Resp{
+		Success: true,
+		Data:    onlineUsers,
+	})
+	
+	
 }
