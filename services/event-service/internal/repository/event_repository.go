@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/wutthichod/sa-connext/services/event-service/internal/models"
 	"gorm.io/gorm"
@@ -80,8 +81,7 @@ func (r *eventRepository) GetByJoiningCode(ctx context.Context, joiningCode stri
 func (r *eventRepository) GetByUserID(ctx context.Context, userID uint) ([]*models.Event, error) {
 	var events []*models.Event
 	err := r.db.WithContext(ctx).
-		Joins("JOIN user_events ON user_events.event_id = events.id").
-		Where("user_events.user_id = ?", userID).
+		Where("organizer_id = ?", fmt.Sprintf("%d", userID)).
 		Find(&events).Error
 	if err != nil {
 		return nil, err

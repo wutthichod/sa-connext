@@ -22,11 +22,12 @@ func NewEventHandler(client *clients.EventServiceClient, config *config.Config) 
 }
 
 func (h *EventHandler) RegisterRoutes(app *fiber.App) {
-	userRoutes := app.Group("/events")
-	userRoutes.Get("/", middlewares.JWTMiddleware(*h.Config), h.GetAllEvents)
-	userRoutes.Get("/:eid", middlewares.JWTMiddleware(*h.Config), h.GetEventById)
-	userRoutes.Post("/", middlewares.JWTMiddleware(*h.Config), h.CreateEvent)
-	userRoutes.Post("/join", middlewares.JWTMiddleware(*h.Config), h.JoinEvent)
+	eventRoutes := app.Group("/events")
+	eventRoutes.Get("/", middlewares.JWTMiddleware(*h.Config), h.GetAllEvents)
+	eventRoutes.Get("/user", middlewares.JWTMiddleware(*h.Config), h.GetEventsByUserID)
+	eventRoutes.Get("/:eid", middlewares.JWTMiddleware(*h.Config), h.GetEventById)
+	eventRoutes.Post("/", middlewares.JWTMiddleware(*h.Config), h.CreateEvent)
+	eventRoutes.Post("/join", middlewares.JWTMiddleware(*h.Config), h.JoinEvent)
 }
 
 func (h *EventHandler) GetAllEvents(c *fiber.Ctx) error {
@@ -130,5 +131,18 @@ func (h *EventHandler) JoinEvent(c *fiber.Ctx) error {
 		return c.Status(res.StatusCode).JSON(res)
 	}
 
+	return c.Status(res.StatusCode).JSON(res)
+}
+
+func (h *EventHandler) GetEventsByUserID(c *fiber.Ctx) error {
+	ctx := c.Context()
+	userID := c.Locals("userID").(uint)
+	res, err := h.EventClient.GetEventsByUserID(ctx, fmt.Sprintf("%d", userID))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(contracts.Resp{
+			Success: false,
+			Message: "Internal server error",
+		})
+	}
 	return c.Status(res.StatusCode).JSON(res)
 }
