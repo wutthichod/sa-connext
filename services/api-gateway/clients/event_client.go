@@ -23,6 +23,7 @@ var routes = map[string]RouteDefinition{
 	"getAllEvents": {Method: "GET", Path: "/events/"},
 	"joinEvent":    {Method: "POST", Path: "/events/join"},
 	"getEventsByUserID": {Method: "GET", Path: "/events/users/%s"},
+	"deleteEvent": {Method: "DELETE", Path: "/events/%s"},
 }
 
 type EventServiceClient struct {
@@ -194,5 +195,28 @@ func (c *EventServiceClient) GetEventsByUserID(ctx context.Context, userID strin
 		return nil, fmt.Errorf("failed to decode response body: %w", err)
 	}
 
+	return &res, nil
+}
+
+func (c *EventServiceClient) DeleteEvent(ctx context.Context, eventID string) (*contracts.Resp, error) {
+	route, ok := routes["deleteEvent"]
+	if !ok {
+		return nil, fmt.Errorf("route 'deleteEvent' not defined")
+	}
+	url := fmt.Sprintf(c.addr+route.Path, eventID)
+	httpReq, err := http.NewRequestWithContext(ctx, route.Method, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create http request: %w", err)
+	}
+	httpReq.Header.Set("Accept", "application/json")
+	httpRes, err := c.client.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer httpRes.Body.Close()
+	var res contracts.Resp
+	if err := json.NewDecoder(httpRes.Body).Decode(&res); err != nil {
+		return nil, fmt.Errorf("failed to decode response body: %w", err)
+	}
 	return &res, nil
 }

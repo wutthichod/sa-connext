@@ -28,6 +28,7 @@ func (h *EventHandler) RegisterRoutes(app *fiber.App) {
 	events.Get("/users/:user_id", h.GetEventsByUserID)
 	events.Post("/", h.createEvent)
 	events.Post("/join", h.joinEvent)
+	events.Delete("/:id", h.deleteEvent)
 }
 
 func (h *EventHandler) createEvent(c *fiber.Ctx) error {
@@ -169,5 +170,38 @@ func (h *EventHandler) GetEventsByUserID(c *fiber.Ctx) error {
 		Success:    true,
 		StatusCode: http.StatusOK,
 		Data:       events,
+	})
+}
+
+func (h *EventHandler) deleteEvent(c *fiber.Ctx) error {
+	eventID := c.Params("id")
+	eventID_uint, err := strconv.ParseUint(eventID, 10, 64)
+	if err != nil {
+		return c.Status(http.StatusBadRequest).JSON(contracts.Resp{
+			Success:    false,
+			StatusCode: http.StatusBadRequest,
+			Message:    "Invalid event ID format",
+		})
+	}
+
+	err = h.service.DeleteByID(c.Context(), uint(eventID_uint))
+	if err != nil {
+		if errors.Is(err, service.ErrNotFound) {
+			return c.Status(http.StatusNotFound).JSON(contracts.Resp{
+				Success:    false,
+				StatusCode: http.StatusNotFound,
+				Message:    err.Error(),
+			})
+		}
+		return c.Status(http.StatusInternalServerError).JSON(contracts.Resp{
+			Success:    false,
+			StatusCode: http.StatusInternalServerError,
+			Message:    err.Error(),
+		})
+	}
+	return c.Status(http.StatusOK).JSON(contracts.Resp{
+		Success:    true,
+		StatusCode: http.StatusOK,
+		Message:    "Event deleted successfully",
 	})
 }

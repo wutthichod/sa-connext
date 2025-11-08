@@ -219,6 +219,27 @@
             "description": "Get all events organized by the authenticated user. Requires authentication."
           },
           "response": []
+        },
+        {
+          "name": "Delete Event By ID",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/events/:eid",
+              "host": ["{{base_url}}"],
+              "path": ["events", ":eid"],
+              "variable": [
+                {
+                  "key": "eid",
+                  "value": "1",
+                  "description": "Event ID to delete"
+                }
+              ]
+            },
+            "description": "Delete an event by ID. Requires authentication. Only the event organizer can delete the event."
+          },
+          "response": []
         }
       ]
     },

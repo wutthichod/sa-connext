@@ -27,6 +27,7 @@ type EventServiceInterface interface {
 	CreateEvent(ctx context.Context, req *contracts.CreateEventRequest) (*contracts.CreateEventResponse, error)
 	JoinEvent(ctx context.Context, req *contracts.JoinEventRequest) (bool, error)
 	GetEventsByUserID(ctx context.Context, userID uint) ([]*contracts.GetEventResponse, error)
+	DeleteByID(ctx context.Context, id uint) error
 }
 
 type eventService struct {
@@ -193,4 +194,12 @@ func (s *eventService) GetEventsByUserID(ctx context.Context, userID uint) ([]*c
 	}
 
 	return responses, nil
+}
+
+func (s *eventService) DeleteByID(ctx context.Context, id uint) error {
+	err := s.repo.DeleteByID(ctx, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete event from db: %w", err)
+	}
+	return nil
 }

@@ -25,9 +25,10 @@ func (h *EventHandler) RegisterRoutes(app *fiber.App) {
 	eventRoutes := app.Group("/events")
 	eventRoutes.Get("/", middlewares.JWTMiddleware(*h.Config), h.GetAllEvents)
 	eventRoutes.Get("/user", middlewares.JWTMiddleware(*h.Config), h.GetEventsByUserID)
-	eventRoutes.Get("/:eid", middlewares.JWTMiddleware(*h.Config), h.GetEventById)
 	eventRoutes.Post("/", middlewares.JWTMiddleware(*h.Config), h.CreateEvent)
 	eventRoutes.Post("/join", middlewares.JWTMiddleware(*h.Config), h.JoinEvent)
+	eventRoutes.Delete("/:eid", middlewares.JWTMiddleware(*h.Config), h.DeleteEvent)
+	eventRoutes.Get("/:eid", middlewares.JWTMiddleware(*h.Config), h.GetEventById)
 }
 
 func (h *EventHandler) GetAllEvents(c *fiber.Ctx) error {
@@ -144,5 +145,27 @@ func (h *EventHandler) GetEventsByUserID(c *fiber.Ctx) error {
 			Message: "Internal server error",
 		})
 	}
+	return c.Status(res.StatusCode).JSON(res)
+}
+
+func (h *EventHandler) DeleteEvent(c *fiber.Ctx) error {
+	ctx := c.Context()
+	eventID := c.Params("eid")
+	if eventID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(contracts.Resp{
+			Success: false,
+			Message: "Event ID is required",
+		})
+	}
+	log.Printf("DeleteEvent called with eventID: %s", eventID)
+	res, err := h.EventClient.DeleteEvent(ctx, eventID)
+	if err != nil {
+		log.Printf("Error calling event service DeleteEvent: %v", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(contracts.Resp{
+			Success: false,
+			Message: "Internal server error",
+		})
+	}
+	log.Printf("DeleteEvent response: %+v", res)
 	return c.Status(res.StatusCode).JSON(res)
 }

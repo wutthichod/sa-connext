@@ -16,6 +16,7 @@ type EventRepositoryInterface interface {
 	ExistsByJoiningCode(ctx context.Context, joiningCode string) (bool, error)
 	GetByJoiningCode(ctx context.Context, joiningCode string) (*models.Event, error)
 	GetByUserID(ctx context.Context, userID uint) ([]*models.Event, error)
+	DeleteByID(ctx context.Context, id uint) error
 }
 
 // eventRepository implements the interface using GORM
@@ -87,4 +88,12 @@ func (r *eventRepository) GetByUserID(ctx context.Context, userID uint) ([]*mode
 		return nil, err
 	}
 	return events, nil
+}
+
+func (r *eventRepository) DeleteByID(ctx context.Context, id uint) error {
+	err := r.db.WithContext(ctx).Delete(&models.Event{}, id).Error
+	if err != nil {
+		return err
+	}
+	return nil
 }
