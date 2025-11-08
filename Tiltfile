@@ -97,7 +97,8 @@ k8s_resource(
     workload='postgres-deployment',
     new_name='Postgres',
     resource_deps=['Database Secrets', 'Postgres Volume'],
-    labels='Database'
+    labels='Database',
+    port_forwards=5433
 )
 
 k8s_resource(
