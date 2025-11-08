@@ -39,20 +39,18 @@ func (h *ChatHandler) RegisterRoutes(app *fiber.App) {
 	chatRoutes := app.Group("/chats")
 	chatRoutes.Post("/create", middlewares.JWTMiddleware(*h.Config), h.CreateChat)
 	chatRoutes.Post("/send", middlewares.JWTMiddleware(*h.Config), h.SendMessage)
-	chatRoutes.Get("/ws/:id", middlewares.JWTMiddleware(*h.Config), websocket.New(h.WebSocketHandler))
+	chatRoutes.Get("/ws/", middlewares.JWTMiddleware(*h.Config), websocket.New(h.WebSocketHandler))
 	chatRoutes.Get("/", middlewares.JWTMiddleware(*h.Config), h.GetChats)
 	chatRoutes.Get("/:id/messages", middlewares.JWTMiddleware(*h.Config), h.GetChatMessagesByChatId)
 }
 
 // WebSocket handler extracted for clarity
 func (h *ChatHandler) WebSocketHandler(c *websocket.Conn) {
-	userID := c.Params("id")
-	if userID == "" {
-		return
-	}
+	userID := c.Locals("userID").(uint)
+	userIDStr := strconv.FormatUint(uint64(userID), 10)
 
-	h.ConnManager.Add(userID, c)
-	defer h.ConnManager.Remove(userID)
+	h.ConnManager.Add(userIDStr, c)
+	defer h.ConnManager.Remove(userIDStr)
 
 	// Keep connection alive
 	for {
