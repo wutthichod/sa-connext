@@ -25,6 +25,7 @@ func (h *EventHandler) RegisterRoutes(app *fiber.App) {
 	events := app.Group("/events")
 	events.Get("/", h.getAllEvents)
 	events.Get("/:id", h.getEvent)
+	events.Get("/user/:user_id", h.GetEventsByUserID)
 	events.Post("/", h.createEvent)
 	events.Post("/join", h.joinEvent)
 }
@@ -143,5 +144,30 @@ func (h *EventHandler) joinEvent(c *fiber.Ctx) error {
 		Success:    false,
 		StatusCode: http.StatusUnauthorized,
 		Message:    "Invalid joining code",
+	})
+}
+
+func (h *EventHandler) GetEventsByUserID(c *fiber.Ctx) error {
+	userID := c.Params("user_id")
+	userID_uint, err := strconv.ParseUint(userID, 10, 64)
+	if err != nil {
+		return c.Status(http.StatusBadRequest).JSON(contracts.Resp{
+			Success:    false,
+			StatusCode: http.StatusBadRequest,
+			Message:    "Invalid user ID format",
+		})
+	}
+	events, err := h.service.GetEventsByUserID(c.Context(), uint(userID_uint))
+	if err != nil {
+		return c.Status(http.StatusInternalServerError).JSON(contracts.Resp{
+			Success:    false,
+			StatusCode: http.StatusInternalServerError,
+			Message:    err.Error(),
+		})
+	}
+	return c.Status(http.StatusOK).JSON(contracts.Resp{
+		Success:    true,
+		StatusCode: http.StatusOK,
+		Data:       events,
 	})
 }

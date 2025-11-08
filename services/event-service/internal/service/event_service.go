@@ -26,6 +26,7 @@ type EventServiceInterface interface {
 	GetAllEvents(ctx context.Context) ([]*contracts.GetEventResponse, error)
 	CreateEvent(ctx context.Context, req *contracts.CreateEventRequest) (*contracts.CreateEventResponse, error)
 	JoinEvent(ctx context.Context, req *contracts.JoinEventRequest) (bool, error)
+	GetEventsByUserID(ctx context.Context, userID uint) ([]*contracts.GetEventResponse, error)
 }
 
 type eventService struct {
@@ -171,4 +172,25 @@ func (s *eventService) JoinEvent(ctx context.Context, req *contracts.JoinEventRe
 	}
 
 	return result.Success, nil
+}
+
+func (s *eventService) GetEventsByUserID(ctx context.Context, userID uint) ([]*contracts.GetEventResponse, error) {
+	events, err := s.repo.GetByUserID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get events from db: %w", err)
+	}
+	var responses []*contracts.GetEventResponse
+	for _, event := range events {
+		responses = append(responses, &contracts.GetEventResponse{
+			EventID:     event.ID,
+			Name:        event.Name,
+			Detail:      event.Detail,
+			Location:    event.Location,
+			Date:        event.Date.Format(time.RFC3339),
+			JoiningCode: event.JoiningCode,
+			OrganizerId: event.OrganizerID,
+		})
+	}
+
+	return responses, nil
 }
