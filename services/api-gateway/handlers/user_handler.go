@@ -66,7 +66,7 @@ func (h *UserHandler) Register(c *fiber.Ctx) error {
 		Expires:  time.Now().Add(24 * time.Hour), // cookie expires in 1 day
 		HTTPOnly: true,                           // not accessible via JS (important for security)
 		Secure:   true,                           // send only over HTTPS
-		SameSite: "Strict",                       // "Lax" or "None" for cross-site
+		SameSite: "None",                         // "Lax" or "None" for cross-site
 	})
 
 	// Return gRPC response to HTTP client
@@ -97,7 +97,7 @@ func (h *UserHandler) Login(c *fiber.Ctx) error {
 		Expires:  time.Now().Add(24 * time.Hour),
 		HTTPOnly: true,
 		Secure:   false,
-		SameSite: "Strict",
+		SameSite: "None",
 	})
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
