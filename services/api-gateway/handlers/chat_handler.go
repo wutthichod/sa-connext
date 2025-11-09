@@ -37,7 +37,9 @@ func NewChatHandler(client *clients.ChatServiceClient, connManager *messaging.Co
 // Register all chat routes
 func (h *ChatHandler) RegisterRoutes(app *fiber.App) {
 	chatRoutes := app.Group("/chats")
-	chatRoutes.Post("/create", middlewares.JWTMiddleware(*h.Config), h.CreateChat)
+	chatRoutes.Post("/", middlewares.JWTMiddleware(*h.Config), h.CreateChat)
+	chatRoutes.Post("/group", middlewares.JWTMiddleware(*h.Config), h.CreateGroup)
+	chatRoutes.Post("/:id/join", middlewares.JWTMiddleware(*h.Config), h.JoinGroup)
 	chatRoutes.Post("/send", middlewares.JWTMiddleware(*h.Config), h.SendMessage)
 	chatRoutes.Get("/ws/", middlewares.JWTMiddleware(*h.Config), websocket.New(h.WebSocketHandler))
 	chatRoutes.Get("/", middlewares.JWTMiddleware(*h.Config), h.GetChats)
@@ -87,6 +89,54 @@ func (h *ChatHandler) CreateChat(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(contracts.Resp{
+		Success: true,
+	})
+}
+
+func (h *ChatHandler) CreateGroup(c *fiber.Ctx) error {
+	senderID_uint := c.Locals("userID").(uint)
+	senderID := strconv.FormatUint(uint64(senderID_uint), 10)
+	var req dto.CreateGroupRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(contracts.Resp{
+			Success: false,
+			Message: "invalid json format",
+		})
+	}
+
+	if req.GroupName == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(contracts.Resp{
+			Success: false,
+			Message: "empty group name",
+		})
+	}
+
+	_, err := h.ChatClient.CreateGroup(c.Context(), &pb.CreateGroupRequest{
+		SenderId:  senderID,
+		GroupName: req.GroupName,
+	})
+	if err != nil {
+		return errors.HandleGRPCError(c, err)
+	}
+	return c.Status(fiber.StatusCreated).JSON(contracts.Resp{
+		Success: true,
+	})
+}
+
+func (h *ChatHandler) JoinGroup(c *fiber.Ctx) error {
+	userID_uint := c.Locals("userID").(uint)
+	userID := strconv.FormatUint(uint64(userID_uint), 10)
+
+	chatID := c.Params("id")
+
+	_, err := h.ChatClient.JoinGroup(c.Context(), &pb.JoinGroupRequest{
+		UserId: userID,
+		ChatId: chatID,
+	})
+	if err != nil {
+		return errors.HandleGRPCError(c, err)
+	}
+	return c.Status(fiber.StatusOK).JSON(contracts.Resp{
 		Success: true,
 	})
 }
@@ -141,7 +191,10 @@ func (h *ChatHandler) GetChats(c *fiber.Ctx) error {
 	for _, chat := range res.Chats {
 		chats = append(chats, dto.GetChatsResponse{
 			ChatID:             chat.ChatId,
-			OtherParticipantId: chat.OtherParticipantId,
+			IsGroup:            chat.IsGroup,
+			Name:               chat.Name,
+			OtherParticipantId: chat.OtherParticipantIds,
+			LastMessageAt:      chat.LastMessageAt,
 			CreatedAt:          chat.CreatedAt,
 			UpdatedAt:          chat.UpdatedAt,
 		})
@@ -172,11 +225,10 @@ func (h *ChatHandler) GetChatMessagesByChatId(c *fiber.Ctx) error {
 	var messages []dto.GetMessagesByChatIdResponse
 	for _, message := range res.Messages {
 		messages = append(messages, dto.GetMessagesByChatIdResponse{
-			MessageID:   message.MessageId,
-			SenderID:    message.SenderId,
-			RecipientID: message.RecipientId,
-			Message:     message.Message,
-			CreatedAt:   message.CreatedAt,
+			MessageID: message.MessageId,
+			SenderID:  message.SenderId,
+			Message:   message.Message,
+			CreatedAt: message.CreatedAt,
 		})
 	}
 	return c.Status(fiber.StatusOK).JSON(contracts.Resp{

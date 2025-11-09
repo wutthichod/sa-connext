@@ -6,6 +6,8 @@ option go_package = "shared/proto/chat;chat";
 
 service ChatService {
     rpc CreateChat(CreateChatRequest) returns (CreateChatResponse);
+    rpc CreateGroup(CreateGroupRequest) returns (CreateGroupResponse);
+    rpc JoinGroup(JoinGroupRequest) returns (JoinGroupResponse);
     rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
     rpc GetChats(GetChatsRequest) returns (GetChatsResponse);
     rpc GetMessagesByChatId(GetMessagesByChatIdRequest) returns (GetMessagesByChatIdResponse);
@@ -18,9 +20,29 @@ message CreateChatRequest {
 }
 
 message CreateChatResponse {
+    string chat_id = 1;  
+    string sender_id = 2;
+    string recipient_id = 3;    
+}
+
+message CreateGroupRequest {
     string sender_id = 1;
-    string recipient_id = 2;
-    string chat_id = 3;      
+    string group_name = 2;
+}
+
+message CreateGroupResponse {
+    string chat_id = 1;
+    string sender_id = 2;
+
+}
+
+message JoinGroupRequest {
+    string user_id = 1;
+    string chat_id = 2;
+}
+
+message JoinGroupResponse {
+    string chat_id = 1;
 }
 
 message SendMessageRequest {
@@ -45,9 +67,12 @@ message GetChatsResponse {
 
 message Chat {
     string chat_id = 1;
-    string other_participant_id = 2;
-    string created_at = 3;
-    string updated_at = 4;
+    string name = 2;
+    bool isGroup = 3;
+    repeated string other_participant_ids = 4;
+    string last_message_at = 5;
+    string created_at = 6;
+    string updated_at = 7;
 }
 
 message GetMessagesByChatIdRequest {
@@ -62,7 +87,6 @@ message GetMessagesByChatIdResponse {
 message Message {
     string message_id = 1;
     string sender_id = 2;
-    string recipient_id = 3;
     string message = 4;
     string created_at = 5;
 }
