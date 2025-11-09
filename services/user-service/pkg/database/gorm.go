@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"log"
 	"os"
 	"time"
@@ -29,36 +30,69 @@ func NewLogger() logger.Interface {
 	return newLogger
 }
 func InitDatabase(cfg config.Database) (*gorm.DB, error) {
-	// newLogger := logger.New(
-	// 	log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
-	// 	logger.Config{
-	// 		SlowThreshold: time.Second, // Slow SQL threshold
-	// 		LogLevel:      logger.Info, // Log level
-	// 		Colorful:      true,        // Enable color
-	// 	},
-	// )
+	const (
+		maxRetries = 10
+		retryDelay = 2 * time.Second
+		timeout    = 10 * time.Second
+	)
 
-	// db, err := gorm.Open(postgres.Open(cfg.DSN), &gorm.Config{
-	// 	Logger: newLogger,
-	// })
-	// if err != nil {
-	// 	return nil, err
-	// }
-	db, err := gorm.Open(postgres.Open(cfg.DSN), &gorm.Config{
-		Logger: NewLogger(),
-	})
-	if err != nil {
-		panic(err)
+	var db *gorm.DB
+	var err error
+
+	// Retry database connection with exponential backoff
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		log.Printf("Attempting to connect to database (attempt %d/%d)...", attempt, maxRetries)
+
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+
+		// Use a channel to handle the connection attempt with timeout
+		done := make(chan error, 1)
+		go func() {
+			var connErr error
+			db, connErr = gorm.Open(postgres.Open(cfg.DSN), &gorm.Config{
+				Logger: NewLogger(),
+			})
+			if connErr != nil {
+				done <- connErr
+				return
+			}
+
+			sqlDB, connErr := db.DB()
+			if connErr != nil {
+				done <- connErr
+				return
+			}
+
+			// Set connection pool settings
+			sqlDB.SetMaxIdleConns(10)
+			sqlDB.SetMaxOpenConns(100)
+			sqlDB.SetConnMaxLifetime(time.Hour)
+
+			// Test connection with ping
+			pingErr := sqlDB.Ping()
+			done <- pingErr
+		}()
+
+		select {
+		case err = <-done:
+			cancel()
+			if err == nil {
+				log.Println("Successfully connected to database")
+				return db, nil
+			}
+			log.Printf("Database connection attempt %d failed: %v", attempt, err)
+		case <-ctx.Done():
+			cancel()
+			err = ctx.Err()
+			log.Printf("Database connection attempt %d timed out", attempt)
+		}
+
+		if attempt < maxRetries {
+			backoff := retryDelay * time.Duration(attempt)
+			log.Printf("Retrying in %v...", backoff)
+			time.Sleep(backoff)
+		}
 	}
 
-	sqlDB, err := db.DB()
-	if err != nil {
-		return nil, err
-	}
-
-	if err := sqlDB.Ping(); err != nil {
-		return nil, err
-	}
-
-	return db, nil
+	return nil, err
 }
