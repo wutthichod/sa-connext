@@ -53,7 +53,6 @@ func (s *ChatService) CreateChat(ctx context.Context, req *pb.CreateChatRequest)
 
 		existingChat.ID = res.InsertedID.(primitive.ObjectID)
 	}
-
 	return &pb.CreateChatResponse{
 		SenderId:    req.SenderId,
 		RecipientId: req.RecipientId,
@@ -158,9 +157,7 @@ func (s *ChatService) GetChats(ctx context.Context, req *pb.GetChatsRequest) (*p
 	chatCollection := s.db.Collection("chats")
 
 	filter := bson.M{
-		"participants": bson.M{
-			"$all": []string{req.UserId},
-		},
+		"participants": req.UserId,
 	}
 
 	var chats []*pb.Chat
@@ -173,12 +170,6 @@ func (s *ChatService) GetChats(ctx context.Context, req *pb.GetChatsRequest) (*p
 	}
 	defer cur.Close(ctx)
 
-	if !cur.TryNext(ctx) {
-		return &pb.GetChatsResponse{
-			Success: false,
-			Chats:   nil,
-		}, nil
-	}
 	for cur.Next(ctx) {
 		var chat models.Chat
 		if err := cur.Decode(&chat); err != nil {
@@ -198,6 +189,11 @@ func (s *ChatService) GetChats(ctx context.Context, req *pb.GetChatsRequest) (*p
 			UpdatedAt:          chat.UpdatedAt.Format(time.RFC3339),
 		})
 	}
+
+	if err := cur.Err(); err != nil {
+		return &pb.GetChatsResponse{Success: false, Chats: nil}, err
+	}
+
 	return &pb.GetChatsResponse{
 		Success: true,
 		Chats:   chats,
