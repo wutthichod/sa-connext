@@ -24,11 +24,11 @@ func NewEventHandler(s service.EventServiceInterface) *EventHandler {
 func (h *EventHandler) RegisterRoutes(app *fiber.App) {
 	events := app.Group("/events")
 	events.Get("/", h.getAllEvents)
-	events.Get("/:id", h.getEvent)
 	events.Get("/users/:user_id", h.GetEventsByUserID)
 	events.Post("/", h.createEvent)
 	events.Post("/join", h.joinEvent)
 	events.Delete("/:id", h.deleteEvent)
+	events.Get("/:id", h.getEvent)
 }
 
 func (h *EventHandler) createEvent(c *fiber.Ctx) error {
