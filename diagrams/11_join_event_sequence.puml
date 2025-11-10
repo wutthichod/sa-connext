@@ -1,0 +1,26 @@
+@startuml
+!theme plain
+
+title Join Event Sequence
+
+actor User
+participant "Client" as Client
+participant "API Gateway" as Gateway
+participant "Event Service" as EventService
+participant "User Service" as UserService
+database "PostgreSQL" as DB
+
+User -> Client : Join Event
+Client -> Gateway : POST /events/join
+Gateway -> Gateway : Validate JWT
+Gateway -> EventService : HTTP POST /events/join
+EventService -> DB : Find Event by Code
+EventService -> UserService : AddUserToEvent (gRPC)
+UserService -> DB : Update User
+UserService --> EventService : Success
+EventService --> Gateway : Response
+Gateway --> Client : HTTP 200
+Client --> User : Joined
+
+@enduml
+

@@ -1,0 +1,23 @@
+@startuml
+!theme plain
+
+title Create Event Sequence
+
+actor Organizer
+participant "Client" as Client
+participant "API Gateway" as Gateway
+participant "Event Service" as EventService
+database "PostgreSQL" as DB
+
+Organizer -> Client : Create Event
+Client -> Gateway : POST /events/
+Gateway -> Gateway : Validate JWT
+Gateway -> EventService : HTTP POST /events/
+EventService -> EventService : Generate Joining Code
+EventService -> DB : Insert Event
+EventService --> Gateway : Event + Code
+Gateway --> Client : HTTP 201
+Client --> Organizer : Event Created
+
+@enduml
+
