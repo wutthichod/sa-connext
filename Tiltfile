@@ -111,27 +111,31 @@ k8s_resource(
 
 # ============================================================================
 # Application Services
+# Wait for Postgres to be fully ready before starting these
 # ============================================================================
 
 k8s_resource(
     workload='user-service-deployment',
     new_name='User Service',
     resource_deps=['Postgres', 'App Config & Secrets'],
-    labels='Service'
+    labels='Service',
+    pod_readiness='wait'
 )
 
 k8s_resource(
     workload='chat-service-deployment',
     new_name='Chat Service',
     resource_deps=['Postgres', 'App Config & Secrets'],
-    labels='Service'
+    labels='Service',
+    pod_readiness='wait'
 )
 
 k8s_resource(
     workload='event-service-deployment',
     new_name='Event Service',
     resource_deps=['Postgres', 'App Config & Secrets'],
-    labels='Service'
+    labels='Service',
+    pod_readiness='wait'
 )
 
 k8s_resource(
@@ -148,10 +152,8 @@ k8s_resource(
 k8s_resource(
     workload='api-gateway-deployment',
     new_name='API Gateway',
-    resource_deps=[
-
-        'App Config & Secrets'
-    ],
+    resource_deps=['User Service', 'Chat Service', 'Event Service', 'App Config & Secrets'],
     port_forwards=8080,
-    labels='Gateway'
+    labels='Gateway',
+    pod_readiness='wait'
 )
