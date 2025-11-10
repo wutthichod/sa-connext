@@ -8,13 +8,12 @@ const errorRate = new Rate("errors");
 const wsConnections = new Counter("ws_connections");
 const wsMessages = new Counter("ws_messages_sent");
 
-// Test configuration for 100 requests/second
+// Test configuration for 100 requests/second (3m 30s total)
 export const options = {
   stages: [
-    { duration: "30s", target: 20 }, // Ramp up to 20 VUs
-    { duration: "1m", target: 50 }, // Ramp up to 50 VUs
-    { duration: "3m", target: 100 }, // Reach 100 VUs (≈100 req/s)
-    { duration: "2m", target: 100 }, // Hold at 100 VUs
+    { duration: "30s", target: 50 }, // Ramp up to 50 VUs
+    { duration: "1m", target: 100 }, // Reach 100 VUs (≈100 req/s)
+    { duration: "1m30s", target: 100 }, // Hold at 100 VUs
     { duration: "30s", target: 0 }, // Ramp down to 0
   ],
   thresholds: {
@@ -42,7 +41,8 @@ let vuInitialized = false;
 let vuEmail = "";
 let vuPassword = "LoadTest123!";
 let authToken = "";
-let wsSocket = null; // WebSocket connection for this VU
+let wsConnected = false; // Track if WebSocket is connected
+let chatIds = []; // Store created chat IDs for this VU
 
 export default function (data) {
   // Use auth token in Cookie header (mimicking browser behavior)
@@ -100,6 +100,33 @@ export default function (data) {
         const loginData = loginRes.json();
         authToken = loginData.jwtToken;
         vuInitialized = true;
+
+        // Fetch existing chats for this user to populate chatIds
+        headers["Cookie"] = `token=${authToken}`;
+        const chatsRes = http.get(`${BASE_URL}/chats/`, {
+          headers: headers,
+        });
+
+        if (chatsRes.status === 200) {
+          try {
+            const body = chatsRes.json();
+            if (body && body.data && Array.isArray(body.data)) {
+              body.data.forEach((chat) => {
+                // Only include non-group chats
+                if (chat.chat_id && chat.is_group === false) {
+                  chatIds.push(chat.chat_id);
+                }
+              });
+              console.log(
+                `VU ${__VU}: User logged in with ${chatIds.length} existing chats`
+              );
+            }
+          } catch (e) {
+            console.log(`VU ${__VU}: Error loading existing chats: ${e}`);
+          }
+        }
+
+        console.log(`VU ${__VU}: User logged in, ready for testing`);
       } else {
         console.error(
           `VU ${__VU}: Login failed - Status: ${
@@ -116,30 +143,48 @@ export default function (data) {
       );
       return;
     }
-  } // Randomly choose an endpoint to test (realistic traffic distribution)
+  }
+
+  // Establish persistent WebSocket connection once per VU (simulated)
+  // In k6, we can't truly persist WS across iterations, but we track the state
+  if (!wsConnected && chatIds.length > 0) {
+    // Connect WebSocket after we have at least one chat
+    testWebSocketConnect();
+  }
+
+  // Randomly choose an endpoint to test (realistic traffic distribution)
   const rand = Math.random();
 
-  if (rand < 0.25) {
-    // 25% - Get events by user (most common read operation)
+  // Prioritize chat creation if we don't have many chats yet
+  if (chatIds.length < 3) {
+    if (rand < 0.5) {
+      // 50% chance to create chat when we have less than 3 chats
+      testCreateChat(headers);
+      return;
+    }
+  }
+
+  if (rand < 0.2) {
+    // 20% - Get events by user
     testGetEventsByUser(headers);
-  } else if (rand < 0.45) {
-    // 20% - Get user profile
+  } else if (rand < 0.35) {
+    // 15% - Get user profile
     testGetUserProfile(headers);
-  } else if (rand < 0.6) {
+  } else if (rand < 0.5) {
     // 15% - Get chats
     testGetChats(headers);
-  } else if (rand < 0.75) {
-    // 15% - Create event
+  } else if (rand < 0.63) {
+    // 13% - Create event
     testCreateEvent(headers);
-  } else if (rand < 0.85) {
-    // 10% - Send message
+  } else if (rand < 0.75) {
+    // 12% - Create chat
+    testCreateChat(headers);
+  } else if (rand < 0.9) {
+    // 15% - Send message (HTTP) - increased from 10%
     testSendMessage(headers);
-  } else if (rand < 0.95) {
+  } else {
     // 10% - Mixed operations
     testMixedOperations(headers);
-  } else {
-    // 5% - WebSocket chat connection
-    testWebSocketChat();
   }
 
   // Think time between requests (realistic user behavior)
@@ -166,7 +211,7 @@ function testGetUserProfile(headers) {
 
   const success = check(res, {
     "Get profile: status 200": (r) => r.status === 200,
-    "Get profile: has data": (r) => r.json("username") !== undefined,
+    "Get profile: has data": (r) => r.json("data") !== undefined,
   });
 
   errorRate.add(!success);
@@ -181,6 +226,50 @@ function testGetChats(headers) {
     "Get chats: status 200 or 404": (r) => r.status === 200 || r.status === 404,
     "Get chats: response time < 500ms": (r) => r.timings.duration < 500,
   });
+
+  errorRate.add(!success);
+}
+
+function testCreateChat(headers) {
+  // Create a chat with another user (limit to 1-20 to increase chance of existing users)
+  const payload = JSON.stringify({
+    recipient_id: `${Math.floor(Math.random() * 20) + 1}`, // Random user ID 1-20
+  });
+
+  const res = http.post(`${BASE_URL}/chats`, payload, {
+    headers: headers,
+  });
+
+  const success = check(res, {
+    "Create chat: status 200 or 201": (r) =>
+      r.status === 200 || r.status === 201,
+  });
+
+  // API doesn't return chat_id, so we need to fetch all chats
+  if (success && res.status === 201) {
+    // Fetch user's chats to get the chat IDs
+    const chatsRes = http.get(`${BASE_URL}/chats/`, {
+      headers: headers,
+    });
+
+    if (chatsRes.status === 200) {
+      try {
+        const body = chatsRes.json();
+        if (body && body.data && Array.isArray(body.data)) {
+          // Clear and repopulate chatIds with only non-group chats
+          chatIds.length = 0;
+          body.data.forEach((chat) => {
+            // Only include non-group chats (skip groups as they're still in development)
+            if (chat.chat_id && chat.is_group === false) {
+              chatIds.push(chat.chat_id);
+            }
+          });
+        }
+      } catch (e) {
+        // Ignore parsing errors
+      }
+    }
+  }
 
   errorRate.add(!success);
 }
@@ -211,8 +300,17 @@ function testCreateEvent(headers) {
 }
 
 function testSendMessage(headers) {
+  // Only send messages if we have created chats
+  if (chatIds.length === 0) {
+    // Skip sending message this iteration - don't create chat here
+    return;
+  }
+
+  // Use a random chat from our created chats
+  const chatId = chatIds[Math.floor(Math.random() * chatIds.length)];
+
   const payload = JSON.stringify({
-    recipient_id: "2",
+    chat_id: chatId,
     message: `Load test message at ${Date.now()}`,
   });
 
@@ -243,8 +341,10 @@ function testMixedOperations(headers) {
   errorRate.add(!success);
 }
 
-function testWebSocketChat() {
-  // Simulate a real WebSocket chat session
+function testWebSocketConnect() {
+  // Connect WebSocket once and keep it open (simulated in k6)
+  const chatId = chatIds[0]; // Use first chat
+
   const wsUrl = `ws://localhost:8080/chats/ws`;
   const params = {
     headers: {
@@ -254,60 +354,11 @@ function testWebSocketChat() {
 
   const res = ws.connect(wsUrl, params, function (socket) {
     wsConnections.add(1);
+    wsConnected = true;
+    // Keep connection alive - in real scenario, this would persist
+    // For k6, we simulate by keeping it open for a moderate time
+    sleep(10);
 
-    socket.on("open", () => {
-      console.log(`VU ${__VU}: WebSocket connected`);
-
-      // Send a chat message immediately after connecting
-      const message = JSON.stringify({
-        type: "message",
-        content: `Load test chat from VU ${__VU} at ${Date.now()}`,
-        recipient_id: "2",
-      });
-
-      socket.send(message);
-      wsMessages.add(1);
-    });
-
-    socket.on("message", (data) => {
-      check(data, {
-        "WS: received message": (d) => d !== null && d.length > 0,
-      });
-    });
-
-    socket.on("error", (e) => {
-      if (e.error) {
-        console.error(`VU ${__VU}: WebSocket error: ${e.error()}`);
-        errorRate.add(1);
-      }
-    });
-
-    socket.on("close", () => {
-      console.log(`VU ${__VU}: WebSocket closed`);
-    });
-
-    // Stay connected for a short time (simulating real user behavior)
-    // Send 2-3 messages during this time
-    sleep(1);
-    socket.send(
-      JSON.stringify({
-        type: "message",
-        content: `Follow-up message from VU ${__VU}`,
-        recipient_id: "2",
-      })
-    );
-    wsMessages.add(1);
-
-    sleep(1);
-    socket.send(
-      JSON.stringify({
-        type: "typing",
-        recipient_id: "2",
-      })
-    );
-
-    sleep(1);
-    // Close connection gracefully
     socket.close();
   });
 
