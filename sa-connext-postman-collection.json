@@ -316,7 +316,7 @@
 							"raw": "{\n  \"recipient_id\": \"2\"\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/chats/create",
+							"raw": "{{base_url}}/chats",
 							"host": [
 								"{{base_url}}"
 							],
