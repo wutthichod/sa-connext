@@ -24,11 +24,11 @@ func NewEventHandler(s service.EventServiceInterface) *EventHandler {
 func (h *EventHandler) RegisterRoutes(app *fiber.App) {
 	events := app.Group("/events")
 	events.Get("/", h.getAllEvents)
-	events.Get("/:id", h.getEvent)
 	events.Get("/users/:user_id", h.GetEventsByUserID)
 	events.Post("/", h.createEvent)
 	events.Post("/join", h.joinEvent)
 	events.Delete("/:id", h.deleteEvent)
+	events.Get("/:id", h.getEvent)
 }
 
 func (h *EventHandler) createEvent(c *fiber.Ctx) error {
@@ -126,12 +126,12 @@ func (h *EventHandler) joinEvent(c *fiber.Ctx) error {
 		})
 	}
 
-	ok, err := h.service.JoinEvent(c.Context(), &req)
+	ok, eventID, err := h.service.JoinEvent(c.Context(), &req)
 	if ok {
-		// call user service add this event id to user current event
 		return c.Status(http.StatusOK).JSON(contracts.Resp{
 			Success:    true,
 			StatusCode: http.StatusOK,
+			Data:       contracts.JoinEventResponse{EventID: eventID},
 		})
 	}
 	if err != nil {
@@ -146,6 +146,7 @@ func (h *EventHandler) joinEvent(c *fiber.Ctx) error {
 		StatusCode: http.StatusUnauthorized,
 		Message:    "Invalid joining code",
 	})
+
 }
 
 func (h *EventHandler) GetEventsByUserID(c *fiber.Ctx) error {

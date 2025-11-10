@@ -38,8 +38,8 @@ func NewChatHandler(client *clients.ChatServiceClient, connManager *messaging.Co
 func (h *ChatHandler) RegisterRoutes(app *fiber.App) {
 	chatRoutes := app.Group("/chats")
 	chatRoutes.Post("/", middlewares.JWTMiddleware(*h.Config), h.CreateChat)
-	chatRoutes.Post("/group", middlewares.JWTMiddleware(*h.Config), h.CreateGroup)
 	chatRoutes.Post("/:id/join", middlewares.JWTMiddleware(*h.Config), h.JoinGroup)
+	chatRoutes.Post("/group", middlewares.JWTMiddleware(*h.Config), h.CreateGroup)
 	chatRoutes.Post("/send", middlewares.JWTMiddleware(*h.Config), h.SendMessage)
 	chatRoutes.Get("/ws/", middlewares.JWTMiddleware(*h.Config), websocket.New(h.WebSocketHandler))
 	chatRoutes.Get("/", middlewares.JWTMiddleware(*h.Config), h.GetChats)
