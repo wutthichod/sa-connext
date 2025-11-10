@@ -22,16 +22,16 @@ func main() {
 	}
 
 	app := fiber.New()
-	
+
 	// Logger middleware - logs all requests
 	app.Use(logger.New(logger.Config{
 		Format:     "${cyan}[${time}] ${white}${pid} ${red}${status} ${blue}[${method}] ${white}${path}\n",
 		TimeFormat: "02-Jan-2006",
 		TimeZone:   "UTC",
 	}))
-	
+
 	log.Println("Logger middleware activated - all API calls will be logged")
-	
+
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     "http://localhost:3000",
 		AllowCredentials: true,
@@ -53,7 +53,7 @@ func main() {
 	consumer := messaging.NewQueueConsumer(rabbit, connMgr, queueName)
 
 	// Initialize ChatHandler
-	chatHandler := handlers.NewChatHandler(chatClient, connMgr, consumer, &config)
+	chatHandler := handlers.NewChatHandler(chatClient, userClient, connMgr, consumer, &config)
 	userHandler := handlers.NewUserHandler(userClient, &config)
 	eventHandler := handlers.NewEventHandler(eventClient, &config)
 
