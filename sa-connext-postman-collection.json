@@ -330,6 +330,41 @@
 					"response": []
 				},
 				{
+					"name": "CreateGroup",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"group69\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/chats/group",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"chats",
+								"group"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "JoinGroup",
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": []
+				},
+				{
 					"name": "Send Message",
 					"request": {
 						"method": "POST",
@@ -341,7 +376,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"recipient_id\": \"20s0\",\n  \"message\": \"Hello! How are you?\"\n}"
+							"raw": "{\n  \"chat_id\": \"690f19a34a8b6659f9dbe221\",\n  \"message\": \"Hello! How are you?\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/chats/send",
