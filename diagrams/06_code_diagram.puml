@@ -1,0 +1,75 @@
+@startuml
+!theme plain
+
+title Code Structure Diagram - User Service
+
+package "user-service" {
+  [main.go]
+  
+  package "cmd" {
+    [root.go]
+    [serve.go]
+    [setup.go]
+  }
+  
+  package "internal" {
+    package "handler" {
+      [grpc_handler.go]
+    }
+    
+    package "service" {
+      [service.go]
+    }
+    
+    package "repository" {
+      [repo.go]
+    }
+    
+    package "models" {
+      [user.go]
+    }
+    
+    package "mapper" {
+      [userMapper.go]
+    }
+    
+    package "dto" {
+      [userDTO.go]
+    }
+  }
+  
+  package "pkg/database" {
+    [gorm.go]
+  }
+}
+
+package "shared" {
+  package "auth" {
+    [jwt.go]
+  }
+  package "config" {
+    [config.go]
+  }
+  package "proto" {
+    [user.pb.go]
+    [user_grpc.pb.go]
+  }
+}
+
+package "proto" {
+  [user.proto]
+}
+
+[main.go] --> [cmd]
+[cmd] --> [internal/handler]
+[internal/handler] --> [internal/service]
+[internal/service] --> [internal/repository]
+[internal/service] --> [internal/models]
+[internal/service] --> [internal/mapper]
+[internal/repository] --> [pkg/database]
+[internal/handler] --> [shared/proto]
+[internal/service] --> [shared/auth]
+[shared/proto] --> [proto]
+
+@enduml
+
