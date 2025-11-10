@@ -126,12 +126,12 @@ func (h *EventHandler) joinEvent(c *fiber.Ctx) error {
 		})
 	}
 
-	ok, err := h.service.JoinEvent(c.Context(), &req)
+	ok, eventID, err := h.service.JoinEvent(c.Context(), &req)
 	if ok {
-		// call user service add this event id to user current event
 		return c.Status(http.StatusOK).JSON(contracts.Resp{
 			Success:    true,
 			StatusCode: http.StatusOK,
+			Data:       contracts.JoinEventResponse{EventID: eventID},
 		})
 	}
 	if err != nil {
@@ -146,6 +146,7 @@ func (h *EventHandler) joinEvent(c *fiber.Ctx) error {
 		StatusCode: http.StatusUnauthorized,
 		Message:    "Invalid joining code",
 	})
+
 }
 
 func (h *EventHandler) GetEventsByUserID(c *fiber.Ctx) error {

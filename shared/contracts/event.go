@@ -13,6 +13,10 @@ type CreateEventResponse struct {
 	JoiningCode string `json:"joining_code"`
 }
 
+type JoinEventResponse struct {
+	EventID uint `json:"event_id"`
+}
+
 type GetEventResponse struct {
 	EventID     uint   `json:"event_id"`
 	Name        string `json:"name"`

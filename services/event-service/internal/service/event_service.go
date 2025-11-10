@@ -25,7 +25,7 @@ type EventServiceInterface interface {
 	GetEvent(ctx context.Context, id uint) (*contracts.GetEventResponse, error)
 	GetAllEvents(ctx context.Context) ([]*contracts.GetEventResponse, error)
 	CreateEvent(ctx context.Context, req *contracts.CreateEventRequest) (*contracts.CreateEventResponse, error)
-	JoinEvent(ctx context.Context, req *contracts.JoinEventRequest) (bool, error)
+	JoinEvent(ctx context.Context, req *contracts.JoinEventRequest) (bool, uint, error)
 	GetEventsByUserID(ctx context.Context, userID uint) ([]*contracts.GetEventResponse, error)
 	DeleteByID(ctx context.Context, id uint) error
 }
@@ -153,13 +153,13 @@ func (s *eventService) GetAllEvents(ctx context.Context) ([]*contracts.GetEventR
 	return responses, nil
 }
 
-func (s *eventService) JoinEvent(ctx context.Context, req *contracts.JoinEventRequest) (bool, error) {
+func (s *eventService) JoinEvent(ctx context.Context, req *contracts.JoinEventRequest) (bool, uint, error) {
 	event, err := s.repo.GetByJoiningCode(ctx, req.JoiningCode)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return false, nil // Event not found with this code
+			return false, 0, nil // Event not found with this code
 		}
-		return false, err
+		return false, 0, err
 	}
 
 	addUserToEventReq := &pb.AddUserToEventRequest{
@@ -169,10 +169,10 @@ func (s *eventService) JoinEvent(ctx context.Context, req *contracts.JoinEventRe
 
 	result, err := s.userClient.AddUserToEvent(ctx, addUserToEventReq)
 	if err != nil {
-		return false, err
+		return false, 0, err
 	}
 
-	return result.Success, nil
+	return result.Success, event.ID, nil
 }
 
 func (s *eventService) GetEventsByUserID(ctx context.Context, userID uint) ([]*contracts.GetEventResponse, error) {
