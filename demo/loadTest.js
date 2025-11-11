@@ -8,13 +8,13 @@ const errorRate = new Rate("errors");
 const wsConnections = new Counter("ws_connections");
 const wsMessages = new Counter("ws_messages_sent");
 
-// Test configuration for 100 requests/second (3m 30s total)
+// Test configuration for 100 requests/second (9m total)
 export const options = {
   stages: [
-    { duration: "30s", target: 50 }, // Ramp up to 50 VUs
-    { duration: "1m", target: 100 }, // Reach 100 VUs (≈100 req/s)
-    { duration: "1m30s", target: 100 }, // Hold at 100 VUs
-    { duration: "30s", target: 0 }, // Ramp down to 0
+    { duration: "1m", target: 50 },
+    { duration: "2m", target: 100 },
+    { duration: "5m", target: 100 }, // Longer hold to verify stability
+    { duration: "1m", target: 0 },
   ],
   thresholds: {
     http_req_duration: ["p(95)<500", "p(99)<1000"], // 95% < 500ms, 99% < 1s
@@ -212,6 +212,8 @@ function testGetUserProfile(headers) {
   const success = check(res, {
     "Get profile: status 200": (r) => r.status === 200,
     "Get profile: has data": (r) => r.json("data") !== undefined,
+    "Get profile: response time < 500ms": (r) =>
+      r.timings && r.timings.duration < 500,
   });
 
   errorRate.add(!success);
@@ -243,6 +245,8 @@ function testCreateChat(headers) {
   const success = check(res, {
     "Create chat: status 200 or 201": (r) =>
       r.status === 200 || r.status === 201,
+    "Create chat: response time < 500ms": (r) =>
+      r.timings && r.timings.duration < 500,
   });
 
   // API doesn't return chat_id, so we need to fetch all chats
@@ -294,6 +298,8 @@ function testCreateEvent(headers) {
       const body = r.json();
       return body && body.data && body.data.event_id !== undefined;
     },
+    "Create event: response time < 500ms": (r) =>
+      r.timings && r.timings.duration < 500,
   });
 
   errorRate.add(!success);
@@ -321,6 +327,8 @@ function testSendMessage(headers) {
   const success = check(res, {
     "Send message: status 200 or 201": (r) =>
       r.status === 200 || r.status === 201,
+    "Send message: response time < 500ms": (r) =>
+      r.timings && r.timings.duration < 500,
   });
 
   errorRate.add(!success);
@@ -336,6 +344,9 @@ function testMixedOperations(headers) {
 
   const success = check(batch, {
     "Batch: all requests completed": (responses) => responses.length === 3,
+    "Batch: response time < 500ms": (responses) =>
+      Array.isArray(responses) &&
+      responses.every((r) => r && r.timings && r.timings.duration < 500),
   });
 
   errorRate.add(!success);
