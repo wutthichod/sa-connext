@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+data:
+  GATEWAY_ADDR: ":8080"
+  USER_ADDR: "user-service-svc:8081"
+  CHAT_ADDR: "chat-service-svc:8082"
+  NOTI_ADDR: "notification-service-svc:8083"
+  EVENT_ADDR: "event-service-svc:8084"
+  ORGANIZER_ADDR: "organizer-service-svc:8085"
+  DATABASE_NAME: "user-db"

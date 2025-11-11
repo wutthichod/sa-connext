@@ -1,0 +1,109 @@
+syntax = "proto3";
+
+package users;
+
+option go_package = "shared/proto/user;user";
+
+service UserService {
+    rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
+    rpc Login(LoginRequest) returns (LoginResponse);
+    rpc GetUserById(GetUserByIdRequest) returns (GetUserByIdResponse);
+    rpc GetUsersByEventId(GetUsersByEventIdRequest) returns (GetUsersByEventIdResponse);
+    rpc AddUserToEvent(AddUserToEventRequest) returns (AddUserToEventResponse);
+    rpc LeaveEvent(LeaveEventRequest) returns (LeaveEventResponse);
+    rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
+}
+
+message CreateUserRequest {
+    string username = 1;
+    string password = 2;
+    Contact contact = 3;
+    Education education = 4;
+    string jobTitle = 5;
+    repeated string interests = 6;
+
+}
+
+message CreateUserResponse {
+    bool success = 1;
+    string jwtToken = 2;
+}
+
+message LoginRequest {
+    string email = 1;
+    string password = 2;
+}
+
+message LoginResponse {
+    bool success = 1;
+    string jwtToken = 2;
+}
+
+message GetUserByIdRequest {
+    string user_id = 1;
+}
+
+message GetUserByIdResponse {
+    bool success = 1;
+    User user = 2;
+}
+
+message GetUsersByEventIdRequest {
+    string event_id = 1;
+}
+
+message GetUsersByEventIdResponse {
+    bool success = 1;
+    repeated User users = 2;
+}
+
+message AddUserToEventRequest {
+    string user_id = 1;
+    string event_id = 2;
+}
+
+message AddUserToEventResponse {
+    bool success = 1;
+}
+
+message LeaveEventRequest {
+    string user_id = 1;
+}
+
+message LeaveEventResponse {
+    bool success = 1;
+}
+
+message User {
+    string user_id = 1;
+    string username = 2;
+    string major = 6;
+    string job_title = 7;
+    repeated string interests = 8;
+    Contact contact = 9;
+    Education education = 10;
+}
+
+message Contact {
+    string email = 1;
+    string phone = 2;
+}
+
+message Education {
+    string university = 1;
+    string major = 2;
+}
+
+message UpdateUserRequest {
+    string user_id = 1;
+    string username = 2;
+    Contact contact = 3;
+    Education education = 4;
+    string jobTitle = 5;
+    repeated string interests = 6;
+}
+
+message UpdateUserResponse {
+    bool success = 1;
+    User user = 2;
+}
