@@ -1,0 +1,29 @@
+@startuml
+!theme plain
+
+title Send Message Sequence
+
+actor User
+participant "Client" as Client
+participant "API Gateway" as Gateway
+participant "Chat Service" as ChatService
+database "MongoDB" as MongoDB
+queue "RabbitMQ" as RabbitMQ
+participant "WebSocket" as WebSocket
+actor "Recipient" as Recipient
+
+User -> Client : Send Message
+Client -> Gateway : POST /chats/:id/messages
+Gateway -> Gateway : Validate JWT
+Gateway -> ChatService : SendMessage (gRPC)
+ChatService -> MongoDB : Save Message
+ChatService -> MongoDB : Update Chat
+ChatService -> RabbitMQ : Publish Message
+ChatService --> Gateway : Response
+Gateway --> Client : HTTP 200
+
+RabbitMQ -> Gateway : Deliver Message
+Gateway -> WebSocket : Push
+WebSocket -> Recipient : Real-time Message
+
+@enduml

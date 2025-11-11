@@ -2,7 +2,9 @@ package handler
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
@@ -24,26 +26,32 @@ func NewEventHandler(s service.EventServiceInterface) *EventHandler {
 func (h *EventHandler) RegisterRoutes(app *fiber.App) {
 	events := app.Group("/events")
 	events.Get("/", h.getAllEvents)
-	events.Get("/:id", h.getEvent)
 	events.Get("/users/:user_id", h.GetEventsByUserID)
 	events.Post("/", h.createEvent)
 	events.Post("/join", h.joinEvent)
 	events.Delete("/:id", h.deleteEvent)
+	events.Get("/:id", h.getEvent)
 }
 
 func (h *EventHandler) createEvent(c *fiber.Ctx) error {
+	fmt.Fprintf(os.Stdout, "[Event Service] createEvent: Request received\n")
 	var req contracts.CreateEventRequest
 	if err := c.BodyParser(&req); err != nil {
+		fmt.Fprintf(os.Stderr, "[Event Service] createEvent: BodyParser error: %v\n", err)
 		return c.Status(http.StatusBadRequest).JSON(contracts.Resp{
 			Success:    false,
 			StatusCode: http.StatusBadRequest,
-			Message:    "Invalid request body",
+			Message:    fmt.Sprintf("Invalid request body: %v", err),
 		})
 	}
+
+	fmt.Fprintf(os.Stdout, "[Event Service] createEvent: Parsed request - name=%s, location=%s, date=%s, organizerID=%s\n",
+		req.Name, req.Location, req.Date, req.OrganizerId)
 
 	res, err := h.service.CreateEvent(c.Context(), &req)
 	if err != nil {
 		if errors.Is(err, service.ErrValidation) {
+			fmt.Fprintf(os.Stderr, "[Event Service] createEvent: Validation error: %v\n", err)
 			return c.Status(http.StatusBadRequest).JSON(contracts.Resp{
 				Success:    false,
 				StatusCode: http.StatusBadRequest,
@@ -51,6 +59,7 @@ func (h *EventHandler) createEvent(c *fiber.Ctx) error {
 			})
 		}
 
+		fmt.Fprintf(os.Stderr, "[Event Service] createEvent: Service error: %v\n", err)
 		return c.Status(http.StatusInternalServerError).JSON(contracts.Resp{
 			Success:    false,
 			StatusCode: http.StatusInternalServerError,
@@ -58,6 +67,7 @@ func (h *EventHandler) createEvent(c *fiber.Ctx) error {
 		})
 	}
 
+	fmt.Fprintf(os.Stdout, "[Event Service] createEvent: Success - eventID=%d, joiningCode=%s\n", res.EventID, res.JoiningCode)
 	return c.Status(http.StatusCreated).JSON(contracts.Resp{
 		Success:    true,
 		StatusCode: http.StatusCreated,
@@ -126,12 +136,12 @@ func (h *EventHandler) joinEvent(c *fiber.Ctx) error {
 		})
 	}
 
-	ok, err := h.service.JoinEvent(c.Context(), &req)
+	ok, eventID, err := h.service.JoinEvent(c.Context(), &req)
 	if ok {
-		// call user service add this event id to user current event
 		return c.Status(http.StatusOK).JSON(contracts.Resp{
 			Success:    true,
 			StatusCode: http.StatusOK,
+			Data:       contracts.JoinEventResponse{EventID: eventID},
 		})
 	}
 	if err != nil {
@@ -146,6 +156,7 @@ func (h *EventHandler) joinEvent(c *fiber.Ctx) error {
 		StatusCode: http.StatusUnauthorized,
 		Message:    "Invalid joining code",
 	})
+
 }
 
 func (h *EventHandler) GetEventsByUserID(c *fiber.Ctx) error {
