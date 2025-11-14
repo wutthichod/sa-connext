@@ -48,6 +48,18 @@ export default function ChatPage() {
     fetchUserAndChats(token);
   }, [router]);
 
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    if (selectedConversation && selectedConversation.messages.length > 0) {
+      setTimeout(() => {
+        const messagesEnd = document.getElementById('messages-end');
+        if (messagesEnd) {
+          messagesEnd.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 100);
+    }
+  }, [selectedConversation?.messages.length]);
+
   // WebSocket connection - separate effect to avoid reconnecting on conversation change
   useEffect(() => {
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
@@ -344,48 +356,68 @@ export default function ChatPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen bg-[#5a7568] items-center justify-center">
-        <div className="text-white">Loading chats...</div>
+      <div className="flex h-screen bg-gradient-to-br from-[#5a7568] to-[#4a6558] items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-white font-medium">Loading chats...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen bg-[#5a7568]">
+    <div className="flex h-screen bg-[#5a7568] overflow-hidden">
       {/* Conversation List */}
-      <div className="w-52 bg-white border-r border-gray-200">
-        <div className="p-4 border-b border-gray-200">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-sm font-medium">
+      <div className="w-72 bg-white border-r border-gray-200 shadow-sm flex flex-col h-full">
+        <div className="p-5 border-b border-gray-200 bg-gradient-to-r from-[#5a7568] to-[#4a6558] flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-sm font-semibold text-white shadow-md">
               {currentUser ? getInitials(currentUser.username) : 'U'}
             </div>
-            <span className="text-sm font-medium">{currentUser?.username || 'User'}</span>
+            <div className="flex-1 min-w-0">
+              <span className="text-sm font-semibold text-white block truncate">{currentUser?.username || 'User'}</span>
+              <span className="text-xs text-white/80">Direct Messages</span>
+            </div>
           </div>
         </div>
         
         {/* Conversation Items */}
-        <div className="overflow-y-auto" style={{ maxHeight: 'calc(100vh - 80px)' }}>
+        <div className="flex-1 overflow-y-auto">
           {conversations.length === 0 ? (
-            <div className="p-4 text-center text-sm text-gray-500">
-              No conversations yet. Start a chat from an event!
+            <div className="flex flex-col items-center justify-center p-8 text-center">
+              <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-gray-400">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+              </div>
+              <h3 className="text-sm font-semibold text-gray-900 mb-1">No conversations yet</h3>
+              <p className="text-xs text-gray-500">Start a chat from an event to get started!</p>
             </div>
           ) : (
             conversations.map((conv) => (
-              <button
+              <div
                 key={conv.chat_id}
-                onClick={() => handleSelectConversation(conv)}
-                className={`w-full p-3 border-b border-gray-100 hover:bg-gray-50 transition-colors text-left ${
-                  selectedConversation?.chat_id === conv.chat_id ? 'bg-gray-100' : ''
+                className={`w-full border-b border-gray-100 transition-all duration-150 ${
+                  selectedConversation?.chat_id === conv.chat_id 
+                    ? 'bg-[#5a7568]/10 border-l-4 border-l-[#5a7568]' 
+                    : 'hover:bg-gray-50/50'
                 }`}
               >
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-xs font-medium flex-shrink-0">
-                    {conv.initials}
+                <button
+                  onClick={() => handleSelectConversation(conv)}
+                  className="w-full p-4 transition-colors text-left"
+                >
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#5a7568] to-[#4a6558] flex items-center justify-center text-xs font-semibold flex-shrink-0 text-white shadow-sm">
+                      {conv.initials}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm font-semibold text-gray-900 truncate block">{conv.name}</span>
+                    </div>
                   </div>
-                  <span className="text-sm font-medium truncate">{conv.name}</span>
-                </div>
-                <p className="text-xs text-gray-500 truncate ml-10">{conv.lastMessage}</p>
-              </button>
+                  <p className="text-xs text-gray-500 truncate ml-[52px]">{conv.lastMessage || 'No messages yet'}</p>
+                </button>
+              </div>
             ))
           )}
         </div>
@@ -393,79 +425,111 @@ export default function ChatPage() {
 
       {/* Main Chat Area */}
       {selectedConversation ? (
-        <div className="flex-1 flex flex-col bg-white">
+        <div className="flex-1 flex flex-col bg-white overflow-hidden">
           {/* Chat Header */}
-          <div className="h-16 border-b border-gray-200 flex items-center px-4">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-sm font-medium">
+          <div className="h-16 border-b border-gray-200 bg-white shadow-sm flex items-center px-6 flex-shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#5a7568] to-[#4a6558] flex items-center justify-center text-sm font-semibold text-white shadow-md">
                 {selectedConversation.initials}
               </div>
-              <span className="text-sm font-medium">{selectedConversation.name}</span>
+              <div>
+                <span className="text-base font-semibold text-gray-900 block">{selectedConversation.name}</span>
+              </div>
             </div>
           </div>
 
           {/* Messages Area */}
-          <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
+          <div className="flex-1 overflow-y-auto p-6 bg-gradient-to-b from-gray-50 to-white relative">
             {selectedConversation.messages.length === 0 ? (
-              <div className="text-center text-gray-500 mt-8">
-                No messages yet. Start the conversation!
+              <div className="flex flex-col items-center justify-center h-full text-center">
+                <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-gray-400">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-1">No messages yet</h3>
+                <p className="text-sm text-gray-500">Start the conversation by sending a message!</p>
               </div>
             ) : (
-              selectedConversation.messages.map((msg) => {
-                const isUser = currentUser && msg.sender_id === currentUser.user_id;
-                return (
-                  <div
-                    key={msg.message_id}
-                    className={`mb-4 flex ${isUser ? 'justify-end' : 'justify-start'}`}
-                  >
+              <div className="space-y-3">
+                {selectedConversation.messages.map((msg) => {
+                  const isUser = currentUser && msg.sender_id === currentUser.user_id;
+                  const messageDate = new Date(msg.created_at);
+                  const timeString = messageDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                  
+                  return (
                     <div
-                      className={`max-w-md px-4 py-2 rounded-lg ${
-                        isUser
-                          ? 'bg-[#5a7568] text-white'
-                          : 'bg-white border border-gray-200'
-                      }`}
+                      key={msg.message_id}
+                      className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} animate-in fade-in slide-in-from-bottom-2 duration-200`}
                     >
-                      {msg.message}
+                      <div className="flex items-end gap-2 max-w-md">
+                        <div
+                          className={`px-4 py-2.5 rounded-2xl shadow-sm ${
+                            isUser
+                              ? 'bg-gradient-to-br from-[#5a7568] to-[#4a6558] text-white rounded-br-md'
+                              : 'bg-white text-gray-900 border border-gray-200 rounded-bl-md'
+                          }`}
+                        >
+                          <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{msg.message}</p>
+                          <span className={`text-[10px] mt-1.5 block ${isUser ? 'text-white/70' : 'text-gray-400'}`}>
+                            {timeString}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                );
-              })
+                  );
+                })}
+              </div>
             )}
             <div id="messages-end" />
           </div>
 
           {/* Input Area */}
-          <div className="border-t border-gray-200 p-4">
-            <div className="flex items-end gap-2">
+          <div className="border-t border-gray-200 bg-white p-4 shadow-lg flex-shrink-0">
+            <div className="flex items-end gap-3 max-w-5xl mx-auto">
               <div className="flex-1 relative">
                 <textarea
                   value={message}
-                  onChange={(e) => setMessage(e.target.value)}
+                  onChange={(e) => {
+                    setMessage(e.target.value);
+                    // Auto-resize textarea
+                    e.target.style.height = 'auto';
+                    e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
+                  }}
                   onKeyPress={handleKeyPress}
                   placeholder={`Message ${selectedConversation.name}...`}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[#5a7568] focus:border-transparent"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-[#5a7568] focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
                   rows={1}
                   disabled={sending}
+                  style={{ maxHeight: '120px', minHeight: '44px' }}
                 />
               </div>
               <button
                 onClick={handleSend}
                 disabled={sending || !message.trim()}
-                className="p-3 text-[#5a7568] hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-3 bg-[#5a7568] text-white rounded-xl hover:bg-[#4a6558] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg transform hover:scale-105 active:scale-95 disabled:transform-none"
+                title="Send message"
               >
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <line x1="22" y1="2" x2="11" y2="13"></line>
-                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                </svg>
+                {sending ? (
+                  <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                ) : (
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                  </svg>
+                )}
               </button>
             </div>
           </div>

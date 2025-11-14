@@ -12,6 +12,7 @@ import KeyboardDoubleArrowLeftIcon from '@mui/icons-material/KeyboardDoubleArrow
 import MeetingRoomOutlinedIcon from '@mui/icons-material/MeetingRoomOutlined'
 import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined'
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline'
+import GroupsIcon from '@mui/icons-material/Groups'
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline'
 import FilterHdrIcon from '@mui/icons-material/FilterHdr'
 import LogoutIcon from '@mui/icons-material/Logout'
@@ -51,6 +52,12 @@ export default function Sidebar() {
       label: 'Chat',
       icon: <ChatBubbleOutlineIcon sx={{ fontSize: 26 }} />,
       path: '/chat',
+    },
+    {
+      key: 'GroupChat',
+      label: 'Group Chat',
+      icon: <GroupsIcon sx={{ fontSize: 26 }} />,
+      path: '/group-chat',
     },
     {
       key: 'Profile',
