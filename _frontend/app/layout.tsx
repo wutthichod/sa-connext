@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { Box } from "@mui/material";
 import './globals.css';
+import { WebSocketProvider } from './contexts/WebSocketContext';
 
 // Dynamically import Sidebar with no SSR to avoid hydration issues
 const Sidebar = dynamic(() => import("./components/Sidebar"), {
@@ -35,25 +36,27 @@ export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en">
       <body style={{ margin: 0, padding: 0, height: '100vh', width: '100vw' }}>
-        <Box 
-          display="flex" 
-          flexDirection="row" 
-          minHeight="100vh" 
-          width="100vw"
-          suppressHydrationWarning
-        >
+        <WebSocketProvider>
           <Box 
-            height="100vh" 
-            bgcolor="background.paper"
-            sx={{ display: hideLayout ? 'none' : 'block' }}
+            display="flex" 
+            flexDirection="row" 
+            minHeight="100vh" 
+            width="100vw"
             suppressHydrationWarning
           >
-            {mounted && !hideLayout && <Sidebar />}
+            <Box 
+              height="100vh" 
+              bgcolor="background.paper"
+              sx={{ display: hideLayout ? 'none' : 'block' }}
+              suppressHydrationWarning
+            >
+              {mounted && !hideLayout && <Sidebar />}
+            </Box>
+            <Box flex="1" p={0}>
+              {children}
+            </Box>
           </Box>
-          <Box flex="1" p={0}>
-            {children}
-          </Box>
-        </Box>
+        </WebSocketProvider>
       </body>
     </html>
   );

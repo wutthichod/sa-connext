@@ -58,15 +58,22 @@ func (h *ChatHandler) WebSocketHandler(c *websocket.Conn) {
 	userID := c.Locals("userID").(uint)
 	userIDStr := strconv.FormatUint(uint64(userID), 10)
 
+	log.Printf("WebSocket connection established for user: %s (ID: %d)", userIDStr, userID)
 	h.ConnManager.Add(userIDStr, c)
-	defer h.ConnManager.Remove(userIDStr)
+	defer func() {
+		log.Printf("WebSocket connection closing for user: %s", userIDStr)
+		h.ConnManager.Remove(userIDStr)
+	}()
 
+	log.Printf("WebSocket connection active, waiting for messages from user: %s", userIDStr)
 	// Keep connection alive
 	for {
 		if _, _, err := c.ReadMessage(); err != nil {
+			log.Printf("WebSocket read error for user %s: %v", userIDStr, err)
 			break
 		}
 	}
+	log.Printf("WebSocket connection ended for user: %s", userIDStr)
 }
 
 func (h *ChatHandler) CreateChat(c *fiber.Ctx) error {
@@ -127,7 +134,7 @@ func (h *ChatHandler) CreateGroup(c *fiber.Ctx) error {
 		})
 	}
 
-	_, err := h.ChatClient.CreateGroup(c.Context(), &pb.CreateGroupRequest{
+	res, err := h.ChatClient.CreateGroup(c.Context(), &pb.CreateGroupRequest{
 		SenderId:  senderID,
 		GroupName: req.GroupName,
 	})
@@ -136,6 +143,9 @@ func (h *ChatHandler) CreateGroup(c *fiber.Ctx) error {
 	}
 	return c.Status(fiber.StatusCreated).JSON(contracts.Resp{
 		Success: true,
+		Data: map[string]string{
+			"chat_id": res.ChatId,
+		},
 	})
 }
 
@@ -333,7 +343,9 @@ func (h *ChatHandler) GetChatMessagesByChatId(c *fiber.Ctx) error {
 
 // Start RabbitMQ consumer
 func (h *ChatHandler) ListenRabbit() {
+	log.Printf("Starting RabbitMQ consumer...")
 	if err := h.Queue.Start(); err != nil {
-		log.Fatal("Failed to start RabbitMQ consumer:", err)
+		log.Fatalf("ERROR: Failed to start RabbitMQ consumer: %v", err)
 	}
+	log.Printf("RabbitMQ consumer started successfully")
 }

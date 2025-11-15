@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useWebSocket } from '../contexts/WebSocketContext';
 
 interface Message {
   message_id: string;
@@ -38,7 +39,7 @@ export default function GroupChatPage() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ username: string; user_id: string } | null>(null);
-  const [ws, setWs] = useState<WebSocket | null>(null);
+  const { lastMessage, isConnected } = useWebSocket();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [groupName, setGroupName] = useState('');
@@ -76,123 +77,91 @@ export default function GroupChatPage() {
     }
   }, [selectedConversation?.messages.length]);
 
-  // WebSocket connection - separate effect to avoid reconnecting on conversation change
+  // Handle WebSocket messages from shared connection
   useEffect(() => {
-    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-    if (!token) return;
+    if (!lastMessage) return;
     
-    // Connect to WebSocket for real-time messages
-    const wsUrl = `ws://localhost:8080/chats/ws/?token=${encodeURIComponent(token)}`;
-    const websocket = new WebSocket(wsUrl);
+    console.log('[Group Chat Page] WebSocket message received:', lastMessage);
     
-    websocket.onopen = () => {
-      console.log('[Group Chat Page] WebSocket connected');
-    };
-    
-    websocket.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        console.log('[Group Chat Page] WebSocket message received:', data);
+    if (lastMessage.success && lastMessage.data) {
+      const newMessage = lastMessage.data;
+      console.log('[Group Chat Page] New message received:', newMessage);
+      
+      const chatId = newMessage.chat_id?.toString() || newMessage.chat_id || '';
+      
+      // Check if this message belongs to the currently selected conversation
+      setSelectedConversation(prev => {
+        if (!prev || chatId !== prev.chat_id) return prev;
+        const messageId = newMessage._id?.toString() || newMessage.message_id || '';
+        const exists = prev.messages.some(m => 
+          m.message_id === messageId || 
+          (m.message_id === newMessage._id?.toString())
+        );
+        if (exists) return prev;
         
-        if (data.success && data.data) {
-          const newMessage = data.data;
-          console.log('[Group Chat Page] New message received:', newMessage);
-          
-          const chatId = newMessage.chat_id?.toString() || newMessage.chat_id || '';
-          
-          // Check if this message belongs to the currently selected conversation
-          setSelectedConversation(prev => {
-            if (!prev || chatId !== prev.chat_id) return prev;
-            const messageId = newMessage._id?.toString() || newMessage.message_id || '';
-            const exists = prev.messages.some(m => 
-              m.message_id === messageId || 
-              (m.message_id === newMessage._id?.toString())
-            );
-            if (exists) return prev;
-            
-            // Fetch username for new message sender if not already cached
-            const senderId = newMessage.sender_id || newMessage.senderID || '';
-            let senderUsername = usernames.get(senderId);
-            if (!senderUsername && senderId) {
-              // Fetch username asynchronously
-              fetchUsername(senderId).then(username => {
-                setSelectedConversation(prev => {
-                  if (!prev) return prev;
-                  return {
-                    ...prev,
-                    messages: prev.messages.map(m => 
-                      m.message_id === messageId 
-                        ? { ...m, sender_username: username }
-                        : m
-                    ),
-                  };
-                });
-              });
-            }
-            
-            const updatedMessages = [...prev.messages, {
-              message_id: messageId,
-              sender_id: senderId,
-              message: newMessage.message || newMessage.content || '',
-              created_at: newMessage.created_at || new Date().toISOString(),
-              sender_username: senderUsername || senderId,
-            }];
-            
-            setTimeout(() => {
-              const messagesEnd = document.getElementById('messages-end');
-              if (messagesEnd) {
-                messagesEnd.scrollIntoView({ behavior: 'smooth' });
-              }
-            }, 100);
-            
-            return {
-              ...prev,
-              messages: updatedMessages,
-            };
-          });
-          
-          // Update conversations list to show new message and move to top
-          setConversations(prev => {
-            const updated = prev.map(conv => {
-              if (conv.chat_id === chatId) {
-                return {
-                  ...conv,
-                  lastMessage: newMessage.message || 'New message',
-                };
-              }
-              return conv;
+        // Fetch username for new message sender if not already cached
+        const senderId = newMessage.sender_id || newMessage.senderID || '';
+        let senderUsername = usernames.get(senderId);
+        if (!senderUsername && senderId) {
+          // Fetch username asynchronously
+          fetchUsername(senderId).then(username => {
+            setSelectedConversation(prev => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                messages: prev.messages.map(m => 
+                  m.message_id === messageId 
+                    ? { ...m, sender_username: username }
+                    : m
+                ),
+              };
             });
-            
-            const updatedIndex = updated.findIndex(conv => conv.chat_id === chatId);
-            if (updatedIndex > 0) {
-              const [updatedConv] = updated.splice(updatedIndex, 1);
-              updated.unshift(updatedConv);
-            }
-            
-            return updated;
           });
         }
-      } catch (err) {
-        console.error('[Group Chat Page] Error parsing WebSocket message:', err);
-      }
-    };
-    
-    websocket.onerror = (error) => {
-      console.error('[Group Chat Page] WebSocket error:', error);
-    };
-    
-    websocket.onclose = () => {
-      console.log('[Group Chat Page] WebSocket disconnected');
-    };
-    
-    setWs(websocket);
-    
-    return () => {
-      if (websocket.readyState === WebSocket.OPEN) {
-        websocket.close();
-      }
-    };
-  }, [router]);
+        
+        const updatedMessages = [...prev.messages, {
+          message_id: messageId,
+          sender_id: senderId,
+          message: newMessage.message || newMessage.content || '',
+          created_at: newMessage.created_at || new Date().toISOString(),
+          sender_username: senderUsername || senderId,
+        }];
+        
+        setTimeout(() => {
+          const messagesEnd = document.getElementById('messages-end');
+          if (messagesEnd) {
+            messagesEnd.scrollIntoView({ behavior: 'smooth' });
+          }
+        }, 100);
+        
+        return {
+          ...prev,
+          messages: updatedMessages,
+        };
+      });
+      
+      // Update conversations list to show new message and move to top
+      setConversations(prev => {
+        const updated = prev.map(conv => {
+          if (conv.chat_id === chatId) {
+            return {
+              ...conv,
+              lastMessage: newMessage.message || 'New message',
+            };
+          }
+          return conv;
+        });
+        
+        const updatedIndex = updated.findIndex(conv => conv.chat_id === chatId);
+        if (updatedIndex > 0) {
+          const [updatedConv] = updated.splice(updatedIndex, 1);
+          updated.unshift(updatedConv);
+        }
+        
+        return updated;
+      });
+    }
+  }, [lastMessage, usernames]);
 
   const fetchUserAndChats = async (token: string) => {
     try {

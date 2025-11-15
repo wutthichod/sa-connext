@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useWebSocket } from '../contexts/WebSocketContext';
 
 interface Message {
   message_id: string;
@@ -36,7 +37,7 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ username: string; user_id: string } | null>(null);
-  const [ws, setWs] = useState<WebSocket | null>(null);
+  const { lastMessage, isConnected } = useWebSocket();
 
   useEffect(() => {
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
@@ -60,110 +61,76 @@ export default function ChatPage() {
     }
   }, [selectedConversation?.messages.length]);
 
-  // WebSocket connection - separate effect to avoid reconnecting on conversation change
+  // Handle WebSocket messages from shared connection
   useEffect(() => {
-    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-    if (!token) return;
+    if (!lastMessage) return;
     
-    // Connect to WebSocket for real-time messages
-    // Pass token as query parameter since WebSocket doesn't support custom headers easily
-    const wsUrl = `ws://localhost:8080/chats/ws/?token=${encodeURIComponent(token)}`;
-    const websocket = new WebSocket(wsUrl);
+    console.log('[Chat Page] WebSocket message received:', lastMessage);
     
-    websocket.onopen = () => {
-      console.log('[Chat Page] WebSocket connected');
-    };
-    
-    websocket.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        console.log('[Chat Page] WebSocket message received:', data);
+    if (lastMessage.success && lastMessage.data) {
+      // Handle new message - data.data contains the message object from MongoDB
+      const newMessage = lastMessage.data;
+      console.log('[Chat Page] New message received:', newMessage);
+      
+      // Extract chat_id from the message (it might be an ObjectID string or object)
+      const chatId = newMessage.chat_id?.toString() || newMessage.chat_id || '';
+      
+      // Check if this message belongs to the currently selected conversation
+      setSelectedConversation(prev => {
+        if (!prev || chatId !== prev.chat_id) return prev;
+        // Check if message already exists to avoid duplicates
+        const messageId = newMessage._id?.toString() || newMessage.message_id || '';
+        const exists = prev.messages.some(m => 
+          m.message_id === messageId || 
+          (m.message_id === newMessage._id?.toString())
+        );
+        if (exists) return prev;
         
-        if (data.success && data.data) {
-          // Handle new message - data.data contains the message object from MongoDB
-          const newMessage = data.data;
-          console.log('[Chat Page] New message received:', newMessage);
-          
-          // Extract chat_id from the message (it might be an ObjectID string or object)
-          const chatId = newMessage.chat_id?.toString() || newMessage.chat_id || '';
-          
-          // Check if this message belongs to the currently selected conversation
-          setSelectedConversation(prev => {
-            if (!prev || chatId !== prev.chat_id) return prev;
-            // Check if message already exists to avoid duplicates
-            const messageId = newMessage._id?.toString() || newMessage.message_id || '';
-            const exists = prev.messages.some(m => 
-              m.message_id === messageId || 
-              (m.message_id === newMessage._id?.toString())
-            );
-            if (exists) return prev;
-            
-            const updatedMessages = [...prev.messages, {
-              message_id: messageId,
-              sender_id: newMessage.sender_id || newMessage.senderID || '',
-              message: newMessage.message || newMessage.content || '',
-              created_at: newMessage.created_at || new Date().toISOString(),
-            }];
-            
-            // Scroll to bottom after adding new message
-            setTimeout(() => {
-              const messagesEnd = document.getElementById('messages-end');
-              if (messagesEnd) {
-                messagesEnd.scrollIntoView({ behavior: 'smooth' });
-              }
-            }, 100);
-            
+        const updatedMessages = [...prev.messages, {
+          message_id: messageId,
+          sender_id: newMessage.sender_id || newMessage.senderID || '',
+          message: newMessage.message || newMessage.content || '',
+          created_at: newMessage.created_at || new Date().toISOString(),
+        }];
+        
+        // Scroll to bottom after adding new message
+        setTimeout(() => {
+          const messagesEnd = document.getElementById('messages-end');
+          if (messagesEnd) {
+            messagesEnd.scrollIntoView({ behavior: 'smooth' });
+          }
+        }, 100);
+        
+        return {
+          ...prev,
+          messages: updatedMessages,
+        };
+      });
+      
+      // Update conversations list to show new message and move to top
+      setConversations(prev => {
+        const updated = prev.map(conv => {
+          if (conv.chat_id === chatId) {
+            // Update the last message text
             return {
-              ...prev,
-              messages: updatedMessages,
+              ...conv,
+              lastMessage: newMessage.message || 'New message',
             };
-          });
-          
-          // Update conversations list to show new message and move to top
-          setConversations(prev => {
-            const updated = prev.map(conv => {
-              if (conv.chat_id === chatId) {
-                // Update the last message text
-                return {
-                  ...conv,
-                  lastMessage: newMessage.message || 'New message',
-                };
-              }
-              return conv;
-            });
-            
-            // Move the updated conversation to the top (most recent first)
-            const updatedIndex = updated.findIndex(conv => conv.chat_id === chatId);
-            if (updatedIndex > 0) {
-              const [updatedConv] = updated.splice(updatedIndex, 1);
-              updated.unshift(updatedConv);
-            }
-            
-            return updated;
-          });
+          }
+          return conv;
+        });
+        
+        // Move the updated conversation to the top (most recent first)
+        const updatedIndex = updated.findIndex(conv => conv.chat_id === chatId);
+        if (updatedIndex > 0) {
+          const [updatedConv] = updated.splice(updatedIndex, 1);
+          updated.unshift(updatedConv);
         }
-      } catch (err) {
-        console.error('[Chat Page] Error parsing WebSocket message:', err);
-      }
-    };
-    
-    websocket.onerror = (error) => {
-      console.error('[Chat Page] WebSocket error:', error);
-    };
-    
-    websocket.onclose = () => {
-      console.log('[Chat Page] WebSocket disconnected');
-    };
-    
-    setWs(websocket);
-    
-    // Cleanup on unmount
-    return () => {
-      if (websocket.readyState === WebSocket.OPEN) {
-        websocket.close();
-      }
-    };
-  }, [router]);
+        
+        return updated;
+      });
+    }
+  }, [lastMessage]);
 
   const fetchUserAndChats = async (token: string) => {
     try {

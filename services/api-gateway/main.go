@@ -47,9 +47,18 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer rabbit.Close()
+
+	// Setup exchange + queue for consuming messages from chat service
+	queueName := "chat_gateway"
+	log.Printf("Setting up RabbitMQ queue: %s", queueName)
+	_, err = rabbit.SetupQueue(queueName, "chat", "direct", "chat.gateway", true, nil)
+	if err != nil {
+		log.Fatalf("Failed to setup RabbitMQ queue: %v", err)
+	}
+	log.Printf("RabbitMQ queue setup successful: %s", queueName)
 
 	connMgr := messaging.NewConnectionManager()
-	queueName := "chat_gateway"
 	consumer := messaging.NewQueueConsumer(rabbit, connMgr, queueName)
 
 	// Initialize ChatHandler
@@ -62,9 +71,12 @@ func main() {
 	userHandler.RegisterRoutes(app)
 	eventHandler.RegisterRoutes(app)
 
-	go func() {
-		chatHandler.ListenRabbit()
-	}()
+	// Start RabbitMQ consumer
+	chatHandler.ListenRabbit()
 
+	// Give the consumer a moment to start
+	log.Printf("Waiting for consumer to initialize...")
+
+	log.Printf("Starting HTTP server on: %s", config.App().Gateway)
 	log.Fatal(app.Listen(config.App().Gateway))
 }

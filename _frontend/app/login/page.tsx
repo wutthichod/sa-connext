@@ -77,6 +77,9 @@ const LoginPage: React.FC = () => {
       // Keep quick flag for client checks (optional)
       localStorage.setItem('isLoggedIn', 'true');
 
+      // Dispatch custom event to trigger WebSocket connection
+      window.dispatchEvent(new Event('token-set'));
+
       // redirect to /join
       router.replace('/join');
     } catch (err: any) {
