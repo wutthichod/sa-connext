@@ -38,6 +38,14 @@ func (c *ChatServiceClient) CreateChat(ctx context.Context, req *pb.CreateChatRe
 	return c.Client.CreateChat(ctx, req)
 }
 
+func (c *ChatServiceClient) CreateGroup(ctx context.Context, req *pb.CreateGroupRequest) (*pb.CreateGroupResponse, error) {
+	return c.Client.CreateGroup(ctx, req)
+}
+
+func (c *ChatServiceClient) JoinGroup(ctx context.Context, req *pb.JoinGroupRequest) (*pb.JoinGroupResponse, error) {
+	return c.Client.JoinGroup(ctx, req)
+}
+
 func (c *ChatServiceClient) SendMessage(ctx context.Context, req *pb.SendMessageRequest) (*pb.SendMessageResponse, error) {
 	return c.Client.SendMessage(ctx, req)
 }

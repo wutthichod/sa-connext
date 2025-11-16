@@ -12,6 +12,7 @@ import (
 	"github.com/wutthichod/sa-connext/services/event-service/internal/repository"
 	"github.com/wutthichod/sa-connext/shared/contracts"
 	pb "github.com/wutthichod/sa-connext/shared/proto/user"
+	"github.com/wutthichod/sa-connext/shared/utils"
 	"gorm.io/gorm"
 )
 
@@ -24,7 +25,9 @@ type EventServiceInterface interface {
 	GetEvent(ctx context.Context, id uint) (*contracts.GetEventResponse, error)
 	GetAllEvents(ctx context.Context) ([]*contracts.GetEventResponse, error)
 	CreateEvent(ctx context.Context, req *contracts.CreateEventRequest) (*contracts.CreateEventResponse, error)
-	JoinEvent(ctx context.Context, req *contracts.JoinEventRequest) (bool, error)
+	JoinEvent(ctx context.Context, req *contracts.JoinEventRequest) (bool, uint, error)
+	GetEventsByUserID(ctx context.Context, userID uint) ([]*contracts.GetEventResponse, error)
+	DeleteByID(ctx context.Context, id uint) error
 }
 
 type eventService struct {
@@ -44,7 +47,34 @@ func (s *eventService) CreateEvent(ctx context.Context, req *contracts.CreateEve
 		return nil, fmt.Errorf("%w: name and organizer_id are required", ErrValidation)
 	}
 
-	// 2. Data Transformation (Request DTO -> DB Model)
+	// 2. Generate unique event code (with retry mechanism)
+	const maxRetries = 10
+	var joiningCode string
+	var err error
+
+	for i := 0; i < maxRetries; i++ {
+		joiningCode, err = utils.GenerateEventCode()
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate event code: %w", err)
+		}
+
+		// Check if code already exists
+		exists, err := s.repo.ExistsByJoiningCode(ctx, joiningCode)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check code uniqueness: %w", err)
+		}
+
+		if !exists {
+			break // Found a unique code
+		}
+
+		// If we've exhausted all retries, return an error
+		if i == maxRetries-1 {
+			return nil, fmt.Errorf("failed to generate unique event code after %d attempts", maxRetries)
+		}
+	}
+
+	// 3. Data Transformation (Request DTO -> DB Model)
 	// This is a key responsibility of the service layer.
 	eventDate, err := time.Parse(time.RFC3339, req.Date)
 	if err != nil {
@@ -56,19 +86,20 @@ func (s *eventService) CreateEvent(ctx context.Context, req *contracts.CreateEve
 		Detail:      req.Detail,
 		Location:    req.Location,
 		Date:        eventDate,
-		JoiningCode: req.JoiningCode,
+		JoiningCode: joiningCode,
 		OrganizerID: req.OrganizerId,
 	}
 
-	// 3. Call Repository
+	// 4. Call Repository
 	if err := s.repo.Create(ctx, event); err != nil {
 		// This could be a DB constraint error, etc.
 		return nil, fmt.Errorf("failed to create event in db: %w", err)
 	}
 
-	// 4. Transform Response (DB Model -> Response DTO)
+	// 5. Transform Response (DB Model -> Response DTO)
 	return &contracts.CreateEventResponse{
-		EventID: event.ID,
+		EventID:     event.ID,
+		JoiningCode: joiningCode,
 	}, nil
 }
 
@@ -122,26 +153,53 @@ func (s *eventService) GetAllEvents(ctx context.Context) ([]*contracts.GetEventR
 	return responses, nil
 }
 
-func (s *eventService) JoinEvent(ctx context.Context, req *contracts.JoinEventRequest) (bool, error) {
-
-	event, err := s.repo.GetByID(ctx, req.EventID)
+func (s *eventService) JoinEvent(ctx context.Context, req *contracts.JoinEventRequest) (bool, uint, error) {
+	event, err := s.repo.GetByJoiningCode(ctx, req.JoiningCode)
 	if err != nil {
-		return false, err
-	}
-
-	if req.JoiningCode != event.JoiningCode {
-		return false, nil
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, 0, nil // Event not found with this code
+		}
+		return false, 0, err
 	}
 
 	addUserToEventReq := &pb.AddUserToEventRequest{
 		UserId:  strconv.FormatUint(uint64(req.UserID), 10),
-		EventId: strconv.FormatUint(uint64(req.EventID), 10),
+		EventId: strconv.FormatUint(uint64(event.ID), 10),
 	}
 
 	result, err := s.userClient.AddUserToEvent(ctx, addUserToEventReq)
 	if err != nil {
-		return false, err
+		return false, 0, err
 	}
 
-	return result.Success, nil
+	return result.Success, event.ID, nil
+}
+
+func (s *eventService) GetEventsByUserID(ctx context.Context, userID uint) ([]*contracts.GetEventResponse, error) {
+	events, err := s.repo.GetByUserID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get events from db: %w", err)
+	}
+	var responses []*contracts.GetEventResponse
+	for _, event := range events {
+		responses = append(responses, &contracts.GetEventResponse{
+			EventID:     event.ID,
+			Name:        event.Name,
+			Detail:      event.Detail,
+			Location:    event.Location,
+			Date:        event.Date.Format(time.RFC3339),
+			JoiningCode: event.JoiningCode,
+			OrganizerId: event.OrganizerID,
+		})
+	}
+
+	return responses, nil
+}
+
+func (s *eventService) DeleteByID(ctx context.Context, id uint) error {
+	err := s.repo.DeleteByID(ctx, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete event from db: %w", err)
+	}
+	return nil
 }

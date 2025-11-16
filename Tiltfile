@@ -54,6 +54,7 @@ k8s_yaml([
     'infra/k8s/db-secrets.yaml',
     'infra/k8s/postgres-db.yaml',
     'infra/k8s/pgadmin-db.yaml',
+    'infra/k8s/rabbitmq.yaml',
     
     # Services - Deployments
     'infra/k8s/user-service-deployment.yaml',
@@ -97,7 +98,8 @@ k8s_resource(
     workload='postgres-deployment',
     new_name='Postgres',
     resource_deps=['Database Secrets', 'Postgres Volume'],
-    labels='Database'
+    labels='Database',
+    port_forwards=5433
 )
 
 k8s_resource(
@@ -109,34 +111,56 @@ k8s_resource(
 )
 
 # ============================================================================
+# RabbitMQ Message Broker
+# ============================================================================
+
+k8s_resource(
+    objects=['rabbitmq-pvc'],
+    new_name='RabbitMQ Volume',
+    labels='MessageBroker'
+)
+
+k8s_resource(
+    workload='rabbitmq-deployment',
+    new_name='RabbitMQ',
+    resource_deps=['RabbitMQ Volume'],
+    labels='MessageBroker',
+    port_forwards='15672:15672'
+)
+
+# ============================================================================
 # Application Services
+# Wait for Postgres and RabbitMQ to be fully ready before starting these
 # ============================================================================
 
 k8s_resource(
     workload='user-service-deployment',
     new_name='User Service',
-    resource_deps=['Postgres', 'App Config & Secrets'],
-    labels='Service'
+    resource_deps=['Postgres', 'RabbitMQ', 'App Config & Secrets'],
+    labels='Service',
+    pod_readiness='wait'
 )
 
 k8s_resource(
     workload='chat-service-deployment',
     new_name='Chat Service',
-    resource_deps=['Postgres', 'App Config & Secrets'],
-    labels='Service'
+    resource_deps=['Postgres', 'RabbitMQ', 'App Config & Secrets'],
+    labels='Service',
+    pod_readiness='wait'
 )
 
 k8s_resource(
     workload='event-service-deployment',
     new_name='Event Service',
-    resource_deps=['Postgres', 'App Config & Secrets'],
-    labels='Service'
+    resource_deps=['Postgres', 'RabbitMQ', 'App Config & Secrets'],
+    labels='Service',
+    pod_readiness='wait'
 )
 
 k8s_resource(
     workload='notification-service-deployment',
     new_name='Notification Service',
-    resource_deps=['App Config & Secrets'],
+    resource_deps=['RabbitMQ', 'App Config & Secrets'],
     labels='Service'
 )
 
@@ -147,10 +171,8 @@ k8s_resource(
 k8s_resource(
     workload='api-gateway-deployment',
     new_name='API Gateway',
-    resource_deps=[
-
-        'App Config & Secrets'
-    ],
+    resource_deps=['User Service', 'Chat Service', 'Event Service', 'RabbitMQ', 'App Config & Secrets'],
     port_forwards=8080,
-    labels='Gateway'
+    labels='Gateway',
+    pod_readiness='wait'
 )

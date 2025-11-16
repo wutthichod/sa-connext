@@ -1,0 +1,24 @@
+@startuml
+!theme plain
+
+title User Registration Sequence
+
+actor User
+participant "Client" as Client
+participant "API Gateway" as Gateway
+participant "User Service" as UserService
+database "PostgreSQL" as DB
+
+User -> Client : Submit Registration
+Client -> Gateway : POST /users/register
+Gateway -> UserService : CreateUser (gRPC)
+UserService -> DB : Insert User
+UserService -> DB : Insert Contact
+UserService -> DB : Insert Education
+UserService -> UserService : Generate JWT
+UserService --> Gateway : User + JWT
+Gateway --> Client : HTTP 201 + Cookie
+Client --> User : Success
+
+@enduml
+

@@ -1,6 +1,7 @@
 package messaging
 
 import (
+	"encoding/json"
 	"errors"
 	"log"
 	"sync"
@@ -40,7 +41,7 @@ func (cm *ConnectionManager) Add(userID string, conn *websocket.Conn) {
 		conn:  conn,
 		mutex: sync.Mutex{},
 	}
-	log.Printf("Added connection for user %s", userID)
+	log.Printf("Added WebSocket connection for user: %s", userID)
 }
 
 // Remove unregisters a user connection
@@ -48,6 +49,7 @@ func (cm *ConnectionManager) Remove(userID string) {
 	cm.mutex.Lock()
 	defer cm.mutex.Unlock()
 	delete(cm.connections, userID)
+	log.Printf("Removed WebSocket connection for user: %s", userID)
 }
 
 // Get retrieves the WebSocket connection for a user
@@ -63,13 +65,20 @@ func (cm *ConnectionManager) Get(userID string) (*websocket.Conn, bool) {
 
 // SendMessage sends a message safely to a connected user
 func (cm *ConnectionManager) SendMessage(userID string, message contracts.WSMessage) error {
+	log.Printf("===== ATTEMPTING TO SEND WS MESSAGE =====")
+	log.Printf("UserID: %s, MessageType: %s", userID, message.Type)
+
 	cm.mutex.RLock()
 	wrapper, exists := cm.connections[userID]
 	cm.mutex.RUnlock()
 
 	if !exists {
+		log.Printf("❌ ERROR: No WebSocket connection found for user: %s", userID)
+		log.Printf("Available connections: %d", len(cm.connections))
 		return ErrConnectionNotFound
 	}
+	log.Printf("✓ WebSocket connection found for user: %s", userID)
+	log.Printf("Preparing message payload...")
 
 	wrapper.mutex.Lock()
 	defer wrapper.mutex.Unlock()
@@ -78,7 +87,25 @@ func (cm *ConnectionManager) SendMessage(userID string, message contracts.WSMess
 		Success: true,
 		Data:    message.Data,
 	}
-	return wrapper.conn.WriteJSON(res)
+
+	// Log message details before sending
+	if messageData, err := json.Marshal(res); err == nil {
+		log.Printf("Message payload size: %d bytes", len(messageData))
+	} else {
+		log.Printf("WARNING: Could not marshal message for logging: %v", err)
+	}
+
+	log.Printf("Writing message to WebSocket for user: %s", userID)
+	err := wrapper.conn.WriteJSON(res)
+	if err != nil {
+		log.Printf("❌ ERROR: Failed to write JSON to WebSocket for user %s: %v", userID, err)
+		log.Printf("===== WS SEND FAILED =====")
+	} else {
+		log.Printf("✅ SUCCESS: Message successfully sent to user %s via WebSocket", userID)
+		log.Printf("✅ MessageType: %s, UserID: %s", message.Type, userID)
+		log.Printf("===== WS SEND SUCCESSFUL =====")
+	}
+	return err
 }
 
 func (cm *ConnectionManager) GetAllUserIDs() []string {

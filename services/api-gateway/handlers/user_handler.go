@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -28,8 +29,10 @@ func (h *UserHandler) RegisterRoutes(app *fiber.App) {
 	userRoutes := app.Group("/users")
 	userRoutes.Post("/register", h.Register)
 	userRoutes.Post("/login", h.Login)
+	userRoutes.Post("/logout", h.Logout)
 	userRoutes.Get("/me", middlewares.JWTMiddleware(*h.Config), h.GetMe)
 	userRoutes.Put("/me", middlewares.JWTMiddleware(*h.Config), h.UpdateProfile)
+	userRoutes.Post("/leave-event", middlewares.JWTMiddleware(*h.Config), h.LeaveEvent)
 	userRoutes.Get("/:id", middlewares.JWTMiddleware(*h.Config), h.GetUserByID)
 	userRoutes.Get("/events/:eid", middlewares.JWTMiddleware(*h.Config), h.GetUserByEventID)
 }
@@ -66,7 +69,7 @@ func (h *UserHandler) Register(c *fiber.Ctx) error {
 		Expires:  time.Now().Add(24 * time.Hour), // cookie expires in 1 day
 		HTTPOnly: true,                           // not accessible via JS (important for security)
 		Secure:   true,                           // send only over HTTPS
-		SameSite: "Strict",                       // "Lax" or "None" for cross-site
+		SameSite: "None",                         // "Lax" or "None" for cross-site
 	})
 
 	// Return gRPC response to HTTP client
@@ -97,7 +100,7 @@ func (h *UserHandler) Login(c *fiber.Ctx) error {
 		Expires:  time.Now().Add(24 * time.Hour),
 		HTTPOnly: true,
 		Secure:   false,
-		SameSite: "Strict",
+		SameSite: "None",
 	})
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
@@ -137,6 +140,7 @@ func (h *UserHandler) GetUserByEventID(c *fiber.Ctx) error {
 	ctx := c.Context()
 
 	eventID := c.Params("eid")
+	fmt.Fprintf(os.Stdout, "[API Gateway] GetUserByEventID: eventID=%s\n", eventID)
 	if eventID == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(contracts.Resp{
 			Success: false,
@@ -147,12 +151,19 @@ func (h *UserHandler) GetUserByEventID(c *fiber.Ctx) error {
 		EventId: eventID,
 	})
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "[API Gateway] GetUserByEventID: gRPC error: %v\n", err)
 		return errors.HandleGRPCError(c, err)
 	}
 	if !res.Success {
-		return errors.HandleGRPCError(c, err)
+		fmt.Fprintf(os.Stderr, "[API Gateway] GetUserByEventID: service returned success=false\n")
+		// Return error response when the gRPC call succeeded but returned failure
+		return c.Status(fiber.StatusInternalServerError).JSON(contracts.Resp{
+			Success: false,
+			Message: "Failed to get users by event ID",
+		})
 	}
 
+	fmt.Fprintf(os.Stdout, "[API Gateway] GetUserByEventID: success, found %d users\n", len(res.GetUsers()))
 	return c.Status(fiber.StatusOK).JSON(contracts.Resp{
 		Success: true,
 		Data:    res.GetUsers(),
@@ -214,5 +225,44 @@ func (h *UserHandler) UpdateProfile(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(contracts.Resp{
 		Success: true,
 		Data:    res.GetUser(),
+	})
+}
+
+func (h *UserHandler) LeaveEvent(c *fiber.Ctx) error {
+	ctx := c.Context()
+	userID := c.Locals("userID").(uint)
+
+	res, err := h.UserClient.LeaveEvent(ctx, &pb.LeaveEventRequest{
+		UserId: fmt.Sprintf("%d", userID),
+	})
+	if err != nil {
+		return errors.HandleGRPCError(c, err)
+	}
+
+	if !res.Success {
+		return c.Status(fiber.StatusInternalServerError).JSON(contracts.Resp{
+			Success: false,
+			Message: "Failed to leave event",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(contracts.Resp{
+		Success: true,
+		Message: "Successfully left event",
+	})
+}
+
+func (h *UserHandler) Logout(c *fiber.Ctx) error {
+	c.Cookie(&fiber.Cookie{
+		Name:     "token",
+		Value:    "",
+		Expires:  time.Now().Add(-time.Hour * 24),
+		HTTPOnly: true,   // not accessible via JS (important for security)
+		Secure:   true,   // send only over HTTPS
+		SameSite: "None", // "Lax" or "None" for cross-site
+	})
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"success": true,
+		"message": "Successfully logged out",
 	})
 }

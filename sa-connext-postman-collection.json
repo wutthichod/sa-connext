@@ -1,10 +1,11 @@
 {
 	"info": {
-		"_postman_id": "a4830895-8249-48e5-a101-5f7bf21fc0b5",
+		"_postman_id": "4d2e2d24-4dc4-47e4-b1ee-8cd43a070ebd",
 		"name": "SA-Connext API Collection",
 		"description": "Complete API collection for testing all endpoints",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "33732235"
+		"_exporter_id": "48379985",
+		"_collection_link": "https://wutthichod-it-4524332.postman.co/workspace/Wutthichod-Yoonuch's-Workspace~8ecae71c-850f-46f0-8771-c63221d1be03/collection/48379985-4d2e2d24-4dc4-47e4-b1ee-8cd43a070ebd?action=share&source=collection_link&creator=48379985"
 	},
 	"item": [
 		{
@@ -154,6 +155,14 @@
 						"description": "Get all users participating in a specific event. Requires authentication."
 					},
 					"response": []
+				},
+				{
+					"name": "Get Me",
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": []
 				}
 			]
 		},
@@ -241,6 +250,51 @@
 						"description": "Join an event using the event ID and joining code. Requires authentication."
 					},
 					"response": []
+				},
+				{
+					"name": "Get Events By OrganizerID(UserID)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/events/user",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"events",
+								"user"
+							]
+						},
+						"description": "Get all events organized by the authenticated user. Requires authentication."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Event By ID",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/events/:eid",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"events",
+								":eid"
+							],
+							"variable": [
+								{
+									"key": "eid",
+									"value": "1",
+									"description": "Event ID to delete"
+								}
+							]
+						},
+						"description": "Delete an event by ID. Requires authentication. Only the event organizer can delete the event."
+					},
+					"response": []
 				}
 			]
 		},
@@ -262,7 +316,7 @@
 							"raw": "{\n  \"recipient_id\": \"2\"\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/chats/create",
+							"raw": "{{base_url}}/chats",
 							"host": [
 								"{{base_url}}"
 							],
@@ -272,6 +326,41 @@
 							]
 						},
 						"description": "Create a new chat between two users. Requires authentication."
+					},
+					"response": []
+				},
+				{
+					"name": "CreateGroup",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"group69\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/chats/group",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"chats",
+								"group"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "JoinGroup",
+					"request": {
+						"method": "GET",
+						"header": []
 					},
 					"response": []
 				},
@@ -287,7 +376,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"recipient_id\": \"20s0\",\n  \"message\": \"Hello! How are you?\"\n}"
+							"raw": "{\n  \"chat_id\": \"690f19a34a8b6659f9dbe221\",\n  \"message\": \"Hello! How are you?\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/chats/send",
