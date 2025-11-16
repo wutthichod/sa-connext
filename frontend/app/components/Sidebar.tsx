@@ -15,6 +15,8 @@ import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline'
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline'
 import LogoutIcon from '@mui/icons-material/Logout'
 import EventIcon from '@mui/icons-material/Event'
+import GroupsIcon from "@mui/icons-material/Groups";
+import PeopleIcon from "@mui/icons-material/People";
 import { usePathname, useRouter } from 'next/navigation'
 import Image from 'next/image'
 
@@ -55,6 +57,18 @@ export default function Sidebar({ open, setOpen }: SidebarProps) {
       label: 'Chat',
       icon: <ChatBubbleOutlineIcon sx={{ fontSize: 26 }} />,
       path: '/chat',
+    },
+    {
+      key: "GroupChat",
+      label: "Group Chat",
+      icon: <GroupsIcon sx={{ fontSize: 26 }} />,
+      path: "/group-chat",
+    },
+    {
+      key: "OnlineUsers",
+      label: "Online Users",
+      icon: <PeopleIcon sx={{ fontSize: 26 }} />,
+      path: "/online-users",
     },
     {
       key: 'Profile',
@@ -196,11 +210,14 @@ export default function Sidebar({ open, setOpen }: SidebarProps) {
       {/* Logout Button */}
       <Box
         onClick={() => {
-          localStorage.removeItem('token')
-          sessionStorage.removeItem('token')
-          localStorage.removeItem('isLoggedIn')
-          localStorage.removeItem('lastRoomId')
-          router.push('/login')
+          // Clear all auth data
+          localStorage.removeItem("token");
+          sessionStorage.removeItem("token");
+          localStorage.removeItem("isLoggedIn");
+          localStorage.removeItem("lastRoomId");
+
+          // Force reload to ensure WebSocket is properly closed
+          window.location.href = "/login";
         }}
         sx={{
           display: 'flex',

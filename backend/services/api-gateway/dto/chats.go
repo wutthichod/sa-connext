@@ -1,7 +1,7 @@
 package dto
 
 type CreateChatRequest struct {
-	RecipientID string `json:"recipient_id"`
+	UserIDs []string `json:"user_ids"`
 }
 
 type CreateGroupRequest struct {

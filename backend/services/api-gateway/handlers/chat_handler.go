@@ -83,9 +83,17 @@ func (h *ChatHandler) CreateChat(c *fiber.Ctx) error {
 		})
 	}
 
-	fmt.Fprintf(os.Stdout, "[API Gateway] CreateChat: Request body - RecipientID: %s (type: %T)\n", req.RecipientID, req.RecipientID)
+	var recipientID string
+	for _, userID := range req.UserIDs {
+		if userID != senderID {
+			recipientID = userID
+			break
+		}
+	}
 
-	if req.RecipientID == "" {
+	fmt.Fprintf(os.Stdout, "[API Gateway] CreateChat: Request body - UserIDs: %v (type: %T)\n", req.UserIDs, req.UserIDs)
+
+	if recipientID == "" {
 		fmt.Fprintf(os.Stderr, "[API Gateway] CreateChat: RecipientID is empty\n")
 		return c.Status(fiber.StatusBadRequest).JSON(contracts.Resp{
 			Success: false,
@@ -93,10 +101,10 @@ func (h *ChatHandler) CreateChat(c *fiber.Ctx) error {
 		})
 	}
 
-	fmt.Fprintf(os.Stdout, "[API Gateway] CreateChat: Creating chat with SenderId: %s, RecipientId: %s\n", senderID, req.RecipientID)
-	_, err := h.ChatClient.CreateChat(c.Context(), &pb.CreateChatRequest{
+	fmt.Fprintf(os.Stdout, "[API Gateway] CreateChat: Creating chat with SenderId: %s, RecipientId: %s\n", senderID, recipientID)
+	res, err := h.ChatClient.CreateChat(c.Context(), &pb.CreateChatRequest{
 		SenderId:    senderID,
-		RecipientId: req.RecipientID,
+		RecipientId: recipientID,
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[API Gateway] CreateChat: Error from chat service: %v\n", err)
@@ -106,6 +114,7 @@ func (h *ChatHandler) CreateChat(c *fiber.Ctx) error {
 	fmt.Fprintf(os.Stdout, "[API Gateway] CreateChat: Chat created successfully\n")
 	return c.Status(fiber.StatusCreated).JSON(contracts.Resp{
 		Success: true,
+		Data:    fiber.Map{"room_id": res.ChatId},
 	})
 }
 

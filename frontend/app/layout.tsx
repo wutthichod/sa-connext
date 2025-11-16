@@ -7,6 +7,8 @@ import dynamic from 'next/dynamic';
 import { Box } from "@mui/material";
 import './globals.css';
 
+import { WebSocketProvider } from './contexts/WebSocketContext';
+
 // Dynamically import Sidebar with no SSR to avoid hydration issues
 const Sidebar = dynamic(() => import("./components/Sidebar"), {
   ssr: false,
@@ -47,25 +49,34 @@ export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en">
       <body style={bodyStyle}>
-        <Box
-          display="flex"
-          flexDirection="row"
-          minHeight="100vh"
-          width="100vw"
-          suppressHydrationWarning
-        >
+        <WebSocketProvider>
           <Box
-            height="100vh"
-            bgcolor="background.paper"
-            sx={{ display: hideLayout ? 'none' : 'block' }}
+            display="flex"
+            flexDirection="row"
+            minHeight="100vh"
+            width="100vw"
             suppressHydrationWarning
           >
-            {mounted && !hideLayout && <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />}
+            <Box
+              height="100vh"
+              bgcolor="background.paper"
+              sx={{ display: hideLayout ? 'none' : 'block' }}
+              suppressHydrationWarning
+            >
+              {mounted && !hideLayout && <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />}
+            </Box>
+            <Box
+              flex="1"
+              p={0}
+              sx={{
+                paddingLeft: hideLayout ? '0px' : sidebarOpen ? '270px' : '80px',
+                transition: 'padding-left 250ms ease',
+              }}
+            >
+              {children}
+            </Box>
           </Box>
-          <Box flex="1" p={0} sx={{ paddingLeft: sidebarOpen ? '270px' : '80px', transition: 'padding-left 250ms ease' }}>
-            {children}
-          </Box>
-        </Box>
+        </WebSocketProvider>
       </body>
     </html>
   );

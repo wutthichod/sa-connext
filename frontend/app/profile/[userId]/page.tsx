@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Box, Button, TextField, Typography, Paper, CircularProgress, Alert, Stack } from '@mui/material';
 import { Gloock, Gantari } from 'next/font/google';
 import { useRouter, useParams } from 'next/navigation';
+import { jwtDecode } from "jwt-decode";
 
 const gloock = Gloock({ subsets: ['latin'], weight: '400' });
 const gantari400 = Gantari({ subsets: ['latin'], weight: '400' });
@@ -23,6 +24,11 @@ interface UserProfile {
   interests?: string[];
 }
 
+interface DecodedToken {
+  user_id: string;
+}
+
+
 export default function ViewUserProfilePage() {
   const params = useParams();
   const router = useRouter();
@@ -31,12 +37,17 @@ export default function ViewUserProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
 
   useEffect(() => {
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     if (!token) {
       router.replace('/login');
       return;
+    } else {
+      const decodedToken = jwtDecode<DecodedToken>(token);
+      setCurrentUserId(decodedToken.user_id);
     }
 
     if (!userId) {
@@ -74,6 +85,36 @@ export default function ViewUserProfilePage() {
       setError(err.message || 'Failed to load profile');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreateChat = async () => {
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    if (!token || !currentUserId) {
+      router.push('/login');
+      return;
+    }
+  
+    try {
+      const response = await fetch('/api/chats', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          user_ids: [currentUserId, userId],
+        }),
+      });
+  
+      const data = await response.json();
+      if (response.ok && data.success) {
+        router.push(`/chat?room_id=${data.data.room_id}`);
+      } else {
+        throw new Error(data.error || 'Failed to create chat');
+      }
+    } catch (error: any) {
+      setError(error.message || 'An error occurred while creating the chat.');
     }
   };
 
@@ -122,7 +163,7 @@ export default function ViewUserProfilePage() {
             </Box>
             <Button
               variant="outlined"
-              onClick={() => router.back()}
+              onClick={handleCreateChat}
               sx={{ 
                 alignSelf: 'center',
                 color: '#fff',
@@ -138,6 +179,30 @@ export default function ViewUserProfilePage() {
                   bgcolor: 'rgba(255, 255, 255, 0.1)',
                 },
                 ml: 'auto',
+                width: '150px',
+                height: '50px',
+              }}
+            >
+              Create Chat
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={() => router.back()}
+              sx={{ 
+                alignSelf: 'center',
+                color: '#fff',
+                borderColor: '#fff',
+                borderWidth: 2,
+                px: 3,
+                py: 1.5,
+                fontSize: '1rem',
+                textTransform: 'none',
+                '&:hover': {
+                  borderColor: '#fff',
+                  borderWidth: 2,
+                  bgcolor: 'rgba(255, 255, 255, 0.1)',
+                },
+                ml: '10px',
                 width: '150px',
                 height: '50px',
               }}
@@ -323,27 +388,9 @@ export default function ViewUserProfilePage() {
                 fullWidth
                 disabled
                 variant="standard"
-                sx={{
-                  '& .MuiInputLabel-root': {
-                    fontSize: '1.5rem',
-                    color: 'black',
-                    fontWeight: 'bold',
-                    paddingBottom: '8px',
-                  },
-                  '& .MuiInputBase-input.Mui-disabled': {
-                    WebkitTextFillColor: 'gray', // Safari
-                    color: 'gray', // Other browsers
-                  },
-                  '& .MuiInput-underline:before': {
-                    borderBottom: 'none !important',
-                  },
-                  '& .MuiInput-underline:after': {
-                    borderBottom: 'none !important',
-                  },
-                  '& .MuiInput-underline:hover:not(.Mui-disabled):before': {
-                    borderBottom: 'none !important',
-                  },
-                }}
+                .
+                .
+                .
               />
 
             </Box>
