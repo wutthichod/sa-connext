@@ -125,7 +125,7 @@ func (h *ChatHandler) CreateGroup(c *fiber.Ctx) error {
 		})
 	}
 
-	res, err := h.ChatClient.CreateGroup(c.Context(), &pb.CreateGroupRequest{
+	res, err := h.ChatClient.CreateGroup(c.Context(), &pbChat.CreateGroupRequest{
 		SenderId:  senderID,
 		GroupName: req.GroupName,
 	})
@@ -146,7 +146,7 @@ func (h *ChatHandler) JoinGroup(c *fiber.Ctx) error {
 
 	chatID := c.Params("id")
 
-	_, err := h.ChatClient.JoinGroup(c.Context(), &pb.JoinGroupRequest{
+	_, err := h.ChatClient.JoinGroup(c.Context(), &pbChat.JoinGroupRequest{
 		UserId: userID,
 		ChatId: chatID,
 	})
