@@ -178,9 +178,9 @@ func (h *ChatHandler) SendMessage(c *fiber.Ctx) error {
 	}
 
 	_, err := h.ChatClient.SendMessage(c.Context(), &pbChat.SendMessageRequest{
-		SenderId:    senderID,
-		RecipientId: req.RecipientID,
-		Message:     req.Message,
+		SenderId: senderID,
+		ChatId:   req.ChatID,
+		Message:  req.Message,
 	})
 	if err != nil {
 		return errors.HandleGRPCError(c, err)
