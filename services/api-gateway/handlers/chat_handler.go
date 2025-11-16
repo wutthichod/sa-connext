@@ -327,6 +327,10 @@ func (h *ChatHandler) GetOnlineUsers(c *fiber.Ctx) error {
 	myID := strconv.FormatUint(uint64(myID_uint), 10)
 	onlineUsers := h.ConnManager.GetAllUserIDs()
 
+	response := contracts.OnlineUsersRes{
+		OnlineUsernames: []string{},
+	}
+
 	for _, userID := range onlineUsers {
 		if userID == myID {
 			continue
@@ -340,6 +344,7 @@ func (h *ChatHandler) GetOnlineUsers(c *fiber.Ctx) error {
 		if !res.Success {
 			return errors.HandleGRPCError(c, err)
 		}
+		response.OnlineUsernames = append(response.OnlineUsernames, res.GetUser().GetUsername())
 	}
 	res, err := h.UserClient.GetUserByID(ctx, &pbUser.GetUserByIdRequest{
 		UserId: myID,
@@ -353,7 +358,7 @@ func (h *ChatHandler) GetOnlineUsers(c *fiber.Ctx) error {
 	}
 	return c.Status(fiber.StatusOK).JSON(contracts.Resp{
 		Success: true,
-		Data:    onlineUsers,
+		Data:    response,
 	})
 	
 	
