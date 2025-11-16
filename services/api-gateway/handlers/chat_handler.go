@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"strconv"
@@ -59,9 +60,39 @@ func (h *ChatHandler) WebSocketHandler(c *websocket.Conn) {
 
 	log.Printf("WebSocket connection established for user: %s (ID: %d)", userIDStr, userID)
 	h.ConnManager.Add(userIDStr, c)
+	
+	// Get user details for broadcast
+	ctx := context.Background()
+	userRes, err := h.UserClient.GetUserByID(ctx, &pbUser.GetUserByIdRequest{
+		UserId: userIDStr,
+	})
+	
+	// Broadcast user joined event to all users
+	if err == nil && userRes.Success {
+		user := userRes.GetUser()
+		h.ConnManager.BroadcastToAll(contracts.WSMessage{
+			Type: "user_joined",
+			Data: map[string]interface{}{
+				"user_id":  userIDStr,
+				"username": user.GetUsername(),
+				"email":    user.GetContact().GetEmail(),
+			},
+		})
+		log.Printf("Broadcasted user_joined event for user: %s", userIDStr)
+	}
+	
 	defer func() {
 		log.Printf("WebSocket connection closing for user: %s", userIDStr)
 		h.ConnManager.Remove(userIDStr)
+		
+		// Broadcast user left event to all remaining users
+		h.ConnManager.BroadcastToAll(contracts.WSMessage{
+			Type: "user_left",
+			Data: map[string]interface{}{
+				"user_id": userIDStr,
+			},
+		})
+		log.Printf("Broadcasted user_left event for user: %s", userIDStr)
 	}()
 
 	log.Printf("WebSocket connection active, waiting for messages from user: %s", userIDStr)
@@ -323,18 +354,13 @@ func (h *ChatHandler) ListenRabbit() {
 
 func (h *ChatHandler) GetOnlineUsers(c *fiber.Ctx) error {
 	ctx := c.Context()
-	myID_uint := c.Locals("userID").(uint)
-	myID := strconv.FormatUint(uint64(myID_uint), 10)
 	onlineUsers := h.ConnManager.GetAllUserIDs()
 
 	response := contracts.OnlineUsersRes{
-		OnlineUsernames: []string{},
+		OnlineUsers: []contracts.OnlineUser{},
 	}
 
 	for _, userID := range onlineUsers {
-		if userID == myID {
-			continue
-		}
 		res, err := h.UserClient.GetUserByID(ctx, &pbUser.GetUserByIdRequest{
 			UserId: userID,
 		})
@@ -344,22 +370,17 @@ func (h *ChatHandler) GetOnlineUsers(c *fiber.Ctx) error {
 		if !res.Success {
 			return errors.HandleGRPCError(c, err)
 		}
-		response.OnlineUsernames = append(response.OnlineUsernames, res.GetUser().GetUsername())
+		
+		user := res.GetUser()
+		response.OnlineUsers = append(response.OnlineUsers, contracts.OnlineUser{
+			UserID:   userID,
+			Username: user.GetUsername(),
+			Email:    user.GetContact().GetEmail(),
+		})
 	}
-	res, err := h.UserClient.GetUserByID(ctx, &pbUser.GetUserByIdRequest{
-		UserId: myID,
-	})
-	if err != nil {
-		return errors.HandleGRPCError(c, err)
-	}
-
-	if !res.Success {
-		return errors.HandleGRPCError(c, err)
-	}
+	
 	return c.Status(fiber.StatusOK).JSON(contracts.Resp{
 		Success: true,
 		Data:    response,
 	})
-	
-	
 }

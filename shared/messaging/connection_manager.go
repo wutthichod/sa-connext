@@ -83,9 +83,11 @@ func (cm *ConnectionManager) SendMessage(userID string, message contracts.WSMess
 	wrapper.mutex.Lock()
 	defer wrapper.mutex.Unlock()
 
-	res := &contracts.Resp{
-		Success: true,
-		Data:    message.Data,
+	// Send the full message structure including Type
+	res := map[string]interface{}{
+		"success": true,
+		"type":    message.Type,
+		"data":    message.Data,
 	}
 
 	// Log message details before sending
@@ -116,4 +118,21 @@ func (cm *ConnectionManager) GetAllUserIDs() []string {
 		userIDs = append(userIDs, userID)
 	}
 	return userIDs
+}
+
+// BroadcastToAll sends a message to all connected users
+func (cm *ConnectionManager) BroadcastToAll(message contracts.WSMessage) {
+	cm.mutex.RLock()
+	userIDs := make([]string, 0, len(cm.connections))
+	for userID := range cm.connections {
+		userIDs = append(userIDs, userID)
+	}
+	cm.mutex.RUnlock()
+
+	log.Printf("Broadcasting message to %d users", len(userIDs))
+	for _, userID := range userIDs {
+		if err := cm.SendMessage(userID, message); err != nil {
+			log.Printf("Failed to broadcast to user %s: %v", userID, err)
+		}
+	}
 }
