@@ -1,0 +1,30 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+LAYOUT_TOP_DOWN()
+LAYOUT_WITH_LEGEND()
+
+title API Gateway Component Diagram
+
+Container_Boundary(apiGateway, "API Gateway") {
+    Component(handlers, "Handlers", "Go", "HTTP request handlers")
+    Component(clients, "Service Clients", "Go", "gRPC and HTTP clients")
+    Component(middleware, "Middleware", "Go", "JWT authentication, error handling")
+    Component(wsManager, "WebSocket Manager", "Go", "Manages WebSocket connections")
+}
+
+System_Ext(userService, "User Service", "gRPC service")
+System_Ext(chatService, "Chat Service", "gRPC service")
+System_Ext(eventService, "Event Service", "HTTP service")
+System_Ext(rabbitmq, "RabbitMQ", "Message broker")
+
+Rel(handlers, middleware, "Uses")
+Rel(handlers, clients, "Uses")
+Rel(clients, userService, "gRPC")
+Rel(clients, chatService, "gRPC")
+Rel(clients, eventService, "HTTP")
+Rel(wsManager, rabbitmq, "Consumes")
+Rel(handlers, wsManager, "Uses")
+
+@enduml
+

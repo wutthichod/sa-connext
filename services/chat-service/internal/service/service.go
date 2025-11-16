@@ -56,7 +56,6 @@ func (s *ChatService) CreateChat(ctx context.Context, req *pb.CreateChatRequest)
 
 		existingChat.ID = res.InsertedID.(primitive.ObjectID)
 	}
-
 	return &pb.CreateChatResponse{
 		SenderId:    req.SenderId,
 		RecipientId: req.RecipientId,
@@ -262,6 +261,11 @@ func (s *ChatService) GetChats(ctx context.Context, req *pb.GetChatsRequest) (*p
 			UpdatedAt:           chat.UpdatedAt.Format(time.RFC3339),
 		})
 	}
+
+	if err := cur.Err(); err != nil {
+		return &pb.GetChatsResponse{Success: false, Chats: nil}, err
+	}
+
 	return &pb.GetChatsResponse{
 		Success: true,
 		Chats:   chats,

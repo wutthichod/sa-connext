@@ -1,0 +1,30 @@
+@startuml
+!theme plain
+
+title User Login Sequence
+
+actor User
+participant "Client" as Client
+participant "API Gateway" as Gateway
+participant "User Service" as UserService
+database "PostgreSQL" as DB
+
+User -> Client : Submit Login
+Client -> Gateway : POST /users/login
+Gateway -> UserService : Login (gRPC)
+UserService -> DB : Query User
+UserService -> UserService : Verify Password
+
+alt Valid
+  UserService -> UserService : Generate JWT
+  UserService --> Gateway : User + JWT
+  Gateway --> Client : HTTP 200 + Cookie
+  Client --> User : Success
+else Invalid
+  UserService --> Gateway : Error
+  Gateway --> Client : HTTP 401
+  Client --> User : Failed
+end
+
+@enduml
+

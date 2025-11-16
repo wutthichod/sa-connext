@@ -12,6 +12,24 @@ spec:
       labels:
         app: chat-service
     spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:16-alpine
+          command:
+            - sh
+            - -c
+            - |
+              until pg_isready -h postgres-svc -p 5432 -U $POSTGRES_USER; do
+                echo "Waiting for Postgres to be ready..."
+                sleep 2
+              done
+              echo "Postgres is ready!"
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_USER
       containers:
         - name: chat-service
           image: connext-chat-service:latest

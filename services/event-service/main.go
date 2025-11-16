@@ -5,6 +5,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
+	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/wutthichod/sa-connext/services/event-service/internal/clients"
 	"github.com/wutthichod/sa-connext/services/event-service/internal/handler"
 	"github.com/wutthichod/sa-connext/services/event-service/internal/models"
@@ -43,6 +44,13 @@ func main() {
 	eventHandler := handler.NewEventHandler(eventService)
 
 	app := fiber.New()
+
+	// Logger middleware - logs all requests
+	app.Use(logger.New(logger.Config{
+		Format:     "${cyan}[${time}] ${white}${pid} ${red}${status} ${blue}[${method}] ${white}${path}\n",
+		TimeFormat: "02-Jan-2006",
+		TimeZone:   "UTC",
+	}))
 
 	eventHandler.RegisterRoutes(app)
 
