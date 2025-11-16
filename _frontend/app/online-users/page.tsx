@@ -11,9 +11,11 @@ import {
   Stack,
   Chip,
   CircularProgress,
+  Button,
 } from "@mui/material";
 import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
 import PersonIcon from "@mui/icons-material/Person";
+import ChatIcon from "@mui/icons-material/Chat";
 
 interface OnlineUser {
   user_id: string;
@@ -27,6 +29,8 @@ export default function OnlineUsersPage() {
   const [users, setUsers] = useState<OnlineUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [chattingWith, setChattingWith] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const { lastMessage, isConnected } = useWebSocket();
 
   useEffect(() => {
@@ -37,7 +41,7 @@ export default function OnlineUsersPage() {
       return;
     }
 
-    fetchOnlineUsers(token);
+    fetchCurrentUserAndOnlineUsers(token);
   }, [router]);
 
   // Handle real-time updates via WebSocket
@@ -88,11 +92,27 @@ export default function OnlineUsersPage() {
     }
   }, [lastMessage]);
 
-  const fetchOnlineUsers = async (token: string) => {
+  const fetchCurrentUserAndOnlineUsers = async (token: string) => {
     try {
       setLoading(true);
       setError("");
 
+      // Fetch current user info
+      const userResponse = await fetch("/api/users/me", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (userResponse.ok) {
+        const userData = await userResponse.json();
+        if (userData.success && userData.data) {
+          setCurrentUserId(userData.data.user_id?.toString() || "");
+          console.log("[Online Users] Current user ID:", userData.data.user_id);
+        }
+      }
+
+      // Fetch online users
       const response = await fetch("/api/chats/users", {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -144,6 +164,98 @@ export default function OnlineUsersPage() {
       .join("")
       .toUpperCase()
       .slice(0, 2);
+  };
+
+  const handleChatWithUser = async (userId: string, username: string) => {
+    const token =
+      localStorage.getItem("token") || sessionStorage.getItem("token");
+    if (!token) {
+      router.replace("/login");
+      return;
+    }
+
+    try {
+      setChattingWith(userId);
+      setError(""); // Clear any previous errors
+
+      console.log(
+        `[Online Users] Starting chat with user: ${username} (${userId})`
+      );
+
+      // First, check if a chat already exists with this user
+      const chatsResponse = await fetch("/api/chats", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!chatsResponse.ok) {
+        throw new Error("Failed to fetch chats");
+      }
+
+      const chatsData = await chatsResponse.json();
+      console.log(`[Online Users] Fetched chats:`, chatsData);
+
+      if (chatsData.success && chatsData.data) {
+        const chats = Array.isArray(chatsData.data)
+          ? chatsData.data
+          : [chatsData.data];
+
+        // Look for an existing direct chat with this user
+        const existingChat = chats.find(
+          (chat: any) =>
+            !chat.is_group && chat.other_participants_id?.includes(userId)
+        );
+
+        if (existingChat) {
+          // Chat exists, navigate directly to chat page with chat_id
+          console.log(`[Online Users] Found existing chat:`, existingChat);
+          router.push(`/chat?chatId=${existingChat.chat_id}`);
+          return;
+        }
+      }
+
+      // No existing chat found, create a new one
+      console.log(
+        `[Online Users] No existing chat found. Creating new chat with ${username}...`
+      );
+      const createResponse = await fetch("/api/chats", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          recipient_id: userId,
+        }),
+      });
+
+      const createData = await createResponse.json();
+      console.log(`[Online Users] Create chat response:`, createData);
+
+      if (!createResponse.ok) {
+        throw new Error(createData.error || "Failed to create chat");
+      }
+
+      if (createData.success && createData.data) {
+        console.log(
+          `[Online Users] Chat created successfully. Navigating to chat page...`
+        );
+
+        // Get the chat_id from the response
+        const chatId = createData.data.chat_id;
+
+        // Navigate to chat page with chat_id
+        router.push(`/chat?chatId=${chatId}`);
+      } else {
+        throw new Error(createData.error || "Failed to create chat");
+      }
+    } catch (err: any) {
+      console.error("[Online Users] Error creating/finding chat:", err);
+      setError(err.message || "Failed to start chat");
+    } finally {
+      setChattingWith(null);
+    }
   };
 
   if (loading) {
@@ -262,21 +374,24 @@ export default function OnlineUsersPage() {
               <Card
                 key={user.user_id}
                 sx={{
-                  cursor: "pointer",
                   transition: "transform 0.2s, box-shadow 0.2s",
                   "&:hover": {
                     transform: "translateY(-4px)",
                     boxShadow: 3,
                   },
                 }}
-                onClick={() => {
-                  // Navigate to user profile
-                  router.push(`/profile/${user.user_id}`);
-                }}
               >
                 <CardContent>
                   <Stack spacing={2} alignItems="center">
-                    <Box sx={{ position: "relative" }}>
+                    <Box
+                      sx={{
+                        position: "relative",
+                        cursor: "pointer",
+                      }}
+                      onClick={() => {
+                        router.push(`/profile/${user.user_id}`);
+                      }}
+                    >
                       <Avatar
                         sx={{
                           width: 64,
@@ -309,6 +424,10 @@ export default function OnlineUsersPage() {
                           overflow: "hidden",
                           textOverflow: "ellipsis",
                           whiteSpace: "nowrap",
+                          cursor: "pointer",
+                        }}
+                        onClick={() => {
+                          router.push(`/profile/${user.user_id}`);
                         }}
                       >
                         {user.username}
@@ -327,21 +446,63 @@ export default function OnlineUsersPage() {
                           {user.email}
                         </Typography>
                       )}
-                      <Chip
-                        icon={<FiberManualRecordIcon sx={{ fontSize: 10 }} />}
-                        label="Online"
-                        size="small"
-                        sx={{
-                          mt: 1,
-                          height: 20,
-                          fontSize: "0.7rem",
-                          bgcolor: "#e8f5e9",
-                          color: "#2e7d32",
-                          "& .MuiChip-icon": {
-                            color: "#4caf50",
-                          },
-                        }}
-                      />
+                      {/* Only show Chat button if it's not the current user */}
+                      {currentUserId && user.user_id !== currentUserId && (
+                        <Button
+                          variant="contained"
+                          size="small"
+                          startIcon={
+                            chattingWith === user.user_id ? (
+                              <CircularProgress
+                                size={14}
+                                sx={{ color: "white" }}
+                              />
+                            ) : (
+                              <ChatIcon sx={{ fontSize: 16 }} />
+                            )
+                          }
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleChatWithUser(user.user_id, user.username);
+                          }}
+                          disabled={chattingWith === user.user_id}
+                          sx={{
+                            mt: 1.5,
+                            bgcolor: "#8aa79b",
+                            color: "white",
+                            textTransform: "none",
+                            fontSize: "0.75rem",
+                            px: 2,
+                            py: 0.5,
+                            borderRadius: 2,
+                            "&:hover": {
+                              bgcolor: "#7a9688",
+                            },
+                            "&:disabled": {
+                              bgcolor: "#8aa79b",
+                              opacity: 0.7,
+                            },
+                          }}
+                        >
+                          {chattingWith === user.user_id
+                            ? "Opening..."
+                            : "Chat"}
+                        </Button>
+                      )}
+                      {/* Show "You" label for current user */}
+                      {currentUserId && user.user_id === currentUserId && (
+                        <Chip
+                          label="You"
+                          size="small"
+                          sx={{
+                            mt: 1.5,
+                            bgcolor: "#e3f2fd",
+                            color: "#1976d2",
+                            fontSize: "0.75rem",
+                            fontWeight: 600,
+                          }}
+                        />
+                      )}
                     </Box>
                   </Stack>
                 </CardContent>

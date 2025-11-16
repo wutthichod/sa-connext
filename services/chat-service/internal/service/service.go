@@ -33,6 +33,7 @@ func (s *ChatService) CreateChat(ctx context.Context, req *pb.CreateChatRequest)
 		"participants": bson.M{
 			"$all": []string{req.SenderId, req.RecipientId},
 		},
+		"is_group": false,
 	}
 
 	var existingChat models.Chat
@@ -40,7 +41,8 @@ func (s *ChatService) CreateChat(ctx context.Context, req *pb.CreateChatRequest)
 	if err != nil && err != mongo.ErrNoDocuments {
 		return nil, fmt.Errorf("failed to check existing chat: %v", err)
 	} else if err == mongo.ErrNoDocuments {
-		newChat := &models.Chat{
+		// Create new chat
+		newChat := models.Chat{
 			IsGroup:      false,
 			Name:         "",
 			Participants: []string{req.SenderId, req.RecipientId},
@@ -53,8 +55,11 @@ func (s *ChatService) CreateChat(ctx context.Context, req *pb.CreateChatRequest)
 			return nil, fmt.Errorf("failed to create chat: %v", err)
 		}
 
-		existingChat.ID = res.InsertedID.(primitive.ObjectID)
+		// Set the ID and assign to existingChat for consistent return
+		newChat.ID = res.InsertedID.(primitive.ObjectID)
+		existingChat = newChat
 	}
+	
 	return &pb.CreateChatResponse{
 		SenderId:    req.SenderId,
 		RecipientId: req.RecipientId,
