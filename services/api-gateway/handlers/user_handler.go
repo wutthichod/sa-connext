@@ -29,6 +29,7 @@ func (h *UserHandler) RegisterRoutes(app *fiber.App) {
 	userRoutes := app.Group("/users")
 	userRoutes.Post("/register", h.Register)
 	userRoutes.Post("/login", h.Login)
+	userRoutes.Post("/logout", h.Logout)
 	userRoutes.Get("/me", middlewares.JWTMiddleware(*h.Config), h.GetMe)
 	userRoutes.Put("/me", middlewares.JWTMiddleware(*h.Config), h.UpdateProfile)
 	userRoutes.Post("/leave-event", middlewares.JWTMiddleware(*h.Config), h.LeaveEvent)
@@ -248,5 +249,20 @@ func (h *UserHandler) LeaveEvent(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(contracts.Resp{
 		Success: true,
 		Message: "Successfully left event",
+	})
+}
+
+func (h *UserHandler) Logout(c *fiber.Ctx) error {
+	c.Cookie(&fiber.Cookie{
+		Name:     "token",
+		Value:    "",
+		Expires:  time.Now().Add(-time.Hour * 24),
+		HTTPOnly: true,   // not accessible via JS (important for security)
+		Secure:   true,   // send only over HTTPS
+		SameSite: "None", // "Lax" or "None" for cross-site
+	})
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"success": true,
+		"message": "Successfully logged out",
 	})
 }
