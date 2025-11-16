@@ -1,0 +1,26 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+LAYOUT_WITH_LEGEND()
+
+title System Context Diagram - SA-Connext
+
+Person(user, "User", "Uses the application to register, join events, and chat")
+Person(organizer, "Organizer", "Creates and manages events")
+
+System(connext, "SA-Connext", "Event networking and communication platform")
+
+System_Ext(client, "Client Application", "Frontend application")
+SystemDb_Ext(postgres, "PostgreSQL", "Relational database")
+SystemDb_Ext(mongodb, "MongoDB", "Document database")
+System_Ext(rabbitmq, "RabbitMQ", "Message broker")
+
+Rel(user, client, "Uses")
+Rel(organizer, client, "Uses")
+Rel(client, connext, "Makes requests to", "HTTP/REST")
+Rel(connext, postgres, "Stores data in")
+Rel(connext, mongodb, "Stores data in")
+Rel(connext, rabbitmq, "Sends messages via")
+
+@enduml
+

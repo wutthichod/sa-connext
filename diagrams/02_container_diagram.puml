@@ -1,0 +1,51 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+LAYOUT_TOP_DOWN()
+LAYOUT_WITH_LEGEND()
+
+title Container Diagram - SA-Connext
+
+Person(user, "User", "Uses the application")
+Person(organizer, "Organizer", "Creates and manages events")
+
+System_Boundary(connext, "SA-Connext") {
+    Container(webapp, "Client Application", "Web Application", "Provides user interface")
+    
+    Container(apiGateway, "API Gateway", "Fiber/Go", "Routes requests, handles authentication")
+    
+    Container(userService, "User Service", "Go, gRPC", "Manages users and authentication")
+    Container(chatService, "Chat Service", "Go, gRPC", "Handles chat and messaging")
+    Container(eventService, "Event Service", "Go, HTTP", "Manages events")
+}
+
+SystemDb_Ext(postgres, "PostgreSQL", "Database", "Stores user and event data")
+SystemDb_Ext(mongodb, "MongoDB", "Database", "Stores chat messages")
+System_Ext(rabbitmq, "RabbitMQ", "Message Broker", "Handles asynchronous messaging via AMQP")
+
+' User interactions
+Rel(user, webapp, "Uses")
+Rel(organizer, webapp, "Uses")
+
+' Frontend to API Gateway
+Rel(webapp, apiGateway, "HTTP/REST")
+
+' API Gateway to Services
+Rel(apiGateway, userService, "gRPC")
+Rel(apiGateway, chatService, "gRPC")
+Rel(apiGateway, eventService, "HTTP/REST")
+
+' Services to Databases
+Rel(userService, postgres, "Reads/Writes")
+Rel(eventService, postgres, "Reads/Writes")
+Rel(chatService, mongodb, "Reads/Writes")
+
+' Messaging
+Rel(chatService, rabbitmq, "Publishes")
+Rel(apiGateway, rabbitmq, "Consumes")
+
+' Inter-service communication
+Rel(eventService, userService, "gRPC")
+
+@enduml
+

@@ -1,0 +1,59 @@
+package clients
+
+import (
+	"context"
+
+	pb "github.com/wutthichod/sa-connext/shared/proto/chat"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+)
+
+type ChatServiceClient struct {
+	Client pb.ChatServiceClient
+	conn   *grpc.ClientConn
+}
+
+func NewChatServiceClient(addr string) (*ChatServiceClient, error) {
+
+	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, err
+	}
+
+	client := pb.NewChatServiceClient(conn)
+	return &ChatServiceClient{
+		Client: client,
+		conn:   conn,
+	}, nil
+}
+
+func (c *ChatServiceClient) Close() {
+	if c.conn != nil {
+		_ = c.conn.Close()
+	}
+}
+
+func (c *ChatServiceClient) CreateChat(ctx context.Context, req *pb.CreateChatRequest) (*pb.CreateChatResponse, error) {
+	return c.Client.CreateChat(ctx, req)
+}
+
+func (c *ChatServiceClient) CreateGroup(ctx context.Context, req *pb.CreateGroupRequest) (*pb.CreateGroupResponse, error) {
+	return c.Client.CreateGroup(ctx, req)
+}
+
+func (c *ChatServiceClient) JoinGroup(ctx context.Context, req *pb.JoinGroupRequest) (*pb.JoinGroupResponse, error) {
+	return c.Client.JoinGroup(ctx, req)
+}
+
+func (c *ChatServiceClient) SendMessage(ctx context.Context, req *pb.SendMessageRequest) (*pb.SendMessageResponse, error) {
+	return c.Client.SendMessage(ctx, req)
+}
+
+func (c *ChatServiceClient) GetChats(ctx context.Context, req *pb.GetChatsRequest) (*pb.GetChatsResponse, error) {
+	return c.Client.GetChats(ctx, req)
+}
+
+func (c *ChatServiceClient) GetChatMessagesByChatId(ctx context.Context, req *pb.GetMessagesByChatIdRequest) (*pb.GetMessagesByChatIdResponse, error) {
+	return c.Client.GetMessagesByChatId(ctx, req)
+}
