@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -71,12 +72,18 @@ func main() {
 	userHandler.RegisterRoutes(app)
 	eventHandler.RegisterRoutes(app)
 
-	// Start RabbitMQ consumer
+	log.Printf("Starting HTTP server on: %s", config.App().Gateway)
+
+	go func() {
+		log.Fatal(app.Listen(config.App().Gateway))
+	}()
+
+	log.Printf("Waiting for HTTP server to initialize...")
+	time.Sleep(2 * time.Second)
+
 	chatHandler.ListenRabbit()
 
-	// Give the consumer a moment to start
-	log.Printf("Waiting for consumer to initialize...")
+	log.Printf("API Gateway fully initialized - HTTP server and RabbitMQ consumer are ready")
 
-	log.Printf("Starting HTTP server on: %s", config.App().Gateway)
-	log.Fatal(app.Listen(config.App().Gateway))
+	select {}
 }
