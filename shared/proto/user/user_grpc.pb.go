@@ -24,6 +24,7 @@ const (
 	UserService_GetUserById_FullMethodName       = "/users.UserService/GetUserById"
 	UserService_GetUsersByEventId_FullMethodName = "/users.UserService/GetUsersByEventId"
 	UserService_AddUserToEvent_FullMethodName    = "/users.UserService/AddUserToEvent"
+	UserService_LeaveEvent_FullMethodName        = "/users.UserService/LeaveEvent"
 	UserService_UpdateUser_FullMethodName        = "/users.UserService/UpdateUser"
 )
 
@@ -36,6 +37,7 @@ type UserServiceClient interface {
 	GetUserById(ctx context.Context, in *GetUserByIdRequest, opts ...grpc.CallOption) (*GetUserByIdResponse, error)
 	GetUsersByEventId(ctx context.Context, in *GetUsersByEventIdRequest, opts ...grpc.CallOption) (*GetUsersByEventIdResponse, error)
 	AddUserToEvent(ctx context.Context, in *AddUserToEventRequest, opts ...grpc.CallOption) (*AddUserToEventResponse, error)
+	LeaveEvent(ctx context.Context, in *LeaveEventRequest, opts ...grpc.CallOption) (*LeaveEventResponse, error)
 	UpdateUser(ctx context.Context, in *UpdateUserRequest, opts ...grpc.CallOption) (*UpdateUserResponse, error)
 }
 
@@ -97,6 +99,16 @@ func (c *userServiceClient) AddUserToEvent(ctx context.Context, in *AddUserToEve
 	return out, nil
 }
 
+func (c *userServiceClient) LeaveEvent(ctx context.Context, in *LeaveEventRequest, opts ...grpc.CallOption) (*LeaveEventResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(LeaveEventResponse)
+	err := c.cc.Invoke(ctx, UserService_LeaveEvent_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) UpdateUser(ctx context.Context, in *UpdateUserRequest, opts ...grpc.CallOption) (*UpdateUserResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(UpdateUserResponse)
@@ -116,6 +128,7 @@ type UserServiceServer interface {
 	GetUserById(context.Context, *GetUserByIdRequest) (*GetUserByIdResponse, error)
 	GetUsersByEventId(context.Context, *GetUsersByEventIdRequest) (*GetUsersByEventIdResponse, error)
 	AddUserToEvent(context.Context, *AddUserToEventRequest) (*AddUserToEventResponse, error)
+	LeaveEvent(context.Context, *LeaveEventRequest) (*LeaveEventResponse, error)
 	UpdateUser(context.Context, *UpdateUserRequest) (*UpdateUserResponse, error)
 	mustEmbedUnimplementedUserServiceServer()
 }
@@ -141,6 +154,9 @@ func (UnimplementedUserServiceServer) GetUsersByEventId(context.Context, *GetUse
 }
 func (UnimplementedUserServiceServer) AddUserToEvent(context.Context, *AddUserToEventRequest) (*AddUserToEventResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddUserToEvent not implemented")
+}
+func (UnimplementedUserServiceServer) LeaveEvent(context.Context, *LeaveEventRequest) (*LeaveEventResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method LeaveEvent not implemented")
 }
 func (UnimplementedUserServiceServer) UpdateUser(context.Context, *UpdateUserRequest) (*UpdateUserResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateUser not implemented")
@@ -256,6 +272,24 @@ func _UserService_AddUserToEvent_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_LeaveEvent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LeaveEventRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).LeaveEvent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_LeaveEvent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).LeaveEvent(ctx, req.(*LeaveEventRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_UpdateUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(UpdateUserRequest)
 	if err := dec(in); err != nil {
@@ -300,6 +334,10 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AddUserToEvent",
 			Handler:    _UserService_AddUserToEvent_Handler,
+		},
+		{
+			MethodName: "LeaveEvent",
+			Handler:    _UserService_LeaveEvent_Handler,
 		},
 		{
 			MethodName: "UpdateUser",

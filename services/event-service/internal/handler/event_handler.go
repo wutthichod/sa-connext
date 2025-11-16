@@ -2,7 +2,9 @@ package handler
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
@@ -32,18 +34,24 @@ func (h *EventHandler) RegisterRoutes(app *fiber.App) {
 }
 
 func (h *EventHandler) createEvent(c *fiber.Ctx) error {
+	fmt.Fprintf(os.Stdout, "[Event Service] createEvent: Request received\n")
 	var req contracts.CreateEventRequest
 	if err := c.BodyParser(&req); err != nil {
+		fmt.Fprintf(os.Stderr, "[Event Service] createEvent: BodyParser error: %v\n", err)
 		return c.Status(http.StatusBadRequest).JSON(contracts.Resp{
 			Success:    false,
 			StatusCode: http.StatusBadRequest,
-			Message:    "Invalid request body",
+			Message:    fmt.Sprintf("Invalid request body: %v", err),
 		})
 	}
+
+	fmt.Fprintf(os.Stdout, "[Event Service] createEvent: Parsed request - name=%s, location=%s, date=%s, organizerID=%s\n",
+		req.Name, req.Location, req.Date, req.OrganizerId)
 
 	res, err := h.service.CreateEvent(c.Context(), &req)
 	if err != nil {
 		if errors.Is(err, service.ErrValidation) {
+			fmt.Fprintf(os.Stderr, "[Event Service] createEvent: Validation error: %v\n", err)
 			return c.Status(http.StatusBadRequest).JSON(contracts.Resp{
 				Success:    false,
 				StatusCode: http.StatusBadRequest,
@@ -51,6 +59,7 @@ func (h *EventHandler) createEvent(c *fiber.Ctx) error {
 			})
 		}
 
+		fmt.Fprintf(os.Stderr, "[Event Service] createEvent: Service error: %v\n", err)
 		return c.Status(http.StatusInternalServerError).JSON(contracts.Resp{
 			Success:    false,
 			StatusCode: http.StatusInternalServerError,
@@ -58,6 +67,7 @@ func (h *EventHandler) createEvent(c *fiber.Ctx) error {
 		})
 	}
 
+	fmt.Fprintf(os.Stdout, "[Event Service] createEvent: Success - eventID=%d, joiningCode=%s\n", res.EventID, res.JoiningCode)
 	return c.Status(http.StatusCreated).JSON(contracts.Resp{
 		Success:    true,
 		StatusCode: http.StatusCreated,

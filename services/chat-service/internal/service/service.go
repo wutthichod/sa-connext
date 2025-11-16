@@ -29,7 +29,6 @@ func NewChatService(db *mongo.Database, rmq *messaging.RabbitMQ) *ChatService {
 
 func (s *ChatService) CreateChat(ctx context.Context, req *pb.CreateChatRequest) (*pb.CreateChatResponse, error) {
 	chatCollection := s.db.Collection("chats")
-
 	filter := bson.M{
 		"participants": bson.M{
 			"$all": []string{req.SenderId, req.RecipientId},
@@ -232,7 +231,6 @@ func (s *ChatService) GetChats(ctx context.Context, req *pb.GetChatsRequest) (*p
 	defer cur.Close(ctx)
 
 	for cur.Next(ctx) {
-		log.Print(1)
 		var chat models.Chat
 		if err := cur.Decode(&chat); err != nil {
 			return &pb.GetChatsResponse{
@@ -250,7 +248,6 @@ func (s *ChatService) GetChats(ctx context.Context, req *pb.GetChatsRequest) (*p
 		if chat.LastMessageAt != nil {
 			lastMessageAt = chat.LastMessageAt.Format(time.RFC3339)
 		}
-		log.Print(chat.IsGroup)
 		chats = append(chats, &pb.Chat{
 			ChatId:              chat.ID.Hex(),
 			Name:                chat.Name,

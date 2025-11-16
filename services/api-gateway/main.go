@@ -49,11 +49,11 @@ func main() {
 	}
 
 	connMgr := messaging.NewConnectionManager()
-	queueName := "gateway_chat"
+	queueName := "chat_gateway"
 	consumer := messaging.NewQueueConsumer(rabbit, connMgr, queueName)
 
 	// Initialize ChatHandler
-	chatHandler := handlers.NewChatHandler(chatClient, connMgr, consumer, &config)
+	chatHandler := handlers.NewChatHandler(chatClient, userClient, connMgr, consumer, &config)
 	userHandler := handlers.NewUserHandler(userClient, &config)
 	eventHandler := handlers.NewEventHandler(eventClient, &config)
 

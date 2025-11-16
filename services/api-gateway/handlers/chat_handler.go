@@ -1,8 +1,10 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
@@ -15,19 +17,24 @@ import (
 	"github.com/wutthichod/sa-connext/shared/contracts"
 	"github.com/wutthichod/sa-connext/shared/messaging"
 	pb "github.com/wutthichod/sa-connext/shared/proto/chat"
+	pbUser "github.com/wutthichod/sa-connext/shared/proto/user"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type ChatHandler struct {
 	ChatClient  *clients.ChatServiceClient
+	UserClient  *clients.UserServiceClient
 	ConnManager *messaging.ConnectionManager
 	Queue       *messaging.QueueConsumer
 	Config      *config.Config
 }
 
 // Constructor
-func NewChatHandler(client *clients.ChatServiceClient, connManager *messaging.ConnectionManager, queue *messaging.QueueConsumer, config *config.Config) *ChatHandler {
+func NewChatHandler(chatClient *clients.ChatServiceClient, userClient *clients.UserServiceClient, connManager *messaging.ConnectionManager, queue *messaging.QueueConsumer, config *config.Config) *ChatHandler {
 	return &ChatHandler{
-		ChatClient:  client,
+		ChatClient:  chatClient,
+		UserClient:  userClient,
 		ConnManager: connManager,
 		Queue:       queue,
 		Config:      config,
@@ -65,29 +72,38 @@ func (h *ChatHandler) WebSocketHandler(c *websocket.Conn) {
 func (h *ChatHandler) CreateChat(c *fiber.Ctx) error {
 	senderID_uint := c.Locals("userID").(uint)
 	senderID := strconv.FormatUint(uint64(senderID_uint), 10)
+	fmt.Fprintf(os.Stdout, "[API Gateway] CreateChat: Sender ID (uint): %d, Sender ID (string): %s\n", senderID_uint, senderID)
+
 	var req dto.CreateChatRequest
 	if err := c.BodyParser(&req); err != nil {
+		fmt.Fprintf(os.Stderr, "[API Gateway] CreateChat: Failed to parse request body: %v\n", err)
 		return c.Status(fiber.StatusBadRequest).JSON(contracts.Resp{
 			Success: false,
 			Message: "invalid json format",
 		})
 	}
 
+	fmt.Fprintf(os.Stdout, "[API Gateway] CreateChat: Request body - RecipientID: %s (type: %T)\n", req.RecipientID, req.RecipientID)
+
 	if req.RecipientID == "" {
+		fmt.Fprintf(os.Stderr, "[API Gateway] CreateChat: RecipientID is empty\n")
 		return c.Status(fiber.StatusBadRequest).JSON(contracts.Resp{
 			Success: false,
 			Message: "required recipientID",
 		})
 	}
 
+	fmt.Fprintf(os.Stdout, "[API Gateway] CreateChat: Creating chat with SenderId: %s, RecipientId: %s\n", senderID, req.RecipientID)
 	_, err := h.ChatClient.CreateChat(c.Context(), &pb.CreateChatRequest{
 		SenderId:    senderID,
 		RecipientId: req.RecipientID,
 	})
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "[API Gateway] CreateChat: Error from chat service: %v\n", err)
 		return errors.HandleGRPCError(c, err)
 	}
 
+	fmt.Fprintf(os.Stdout, "[API Gateway] CreateChat: Chat created successfully\n")
 	return c.Status(fiber.StatusCreated).JSON(contracts.Resp{
 		Success: true,
 	})
@@ -187,18 +203,96 @@ func (h *ChatHandler) GetChats(c *fiber.Ctx) error {
 		return errors.HandleGRPCError(c, err)
 	}
 
+	// Collect all participant IDs to fetch usernames
+	participantIDs := make(map[string]bool)
+	for _, chat := range res.Chats {
+		if !chat.IsGroup {
+			for _, participantID := range chat.OtherParticipantIds {
+				participantIDs[participantID] = true
+			}
+		}
+	}
+
+	// Fetch usernames for all participants
+	participantNames := make(map[string]string)
+	for participantID := range participantIDs {
+		fmt.Fprintf(os.Stdout, "[API Gateway] GetChats: Attempting to fetch user %s\n", participantID)
+		userRes, err := h.UserClient.GetUserByID(c.Context(), &pbUser.GetUserByIdRequest{
+			UserId: participantID,
+		})
+		if err != nil {
+			// Check if it's a "not found" error - this is expected for some users
+			st, ok := status.FromError(err)
+			if ok && st.Code() == codes.NotFound {
+				fmt.Fprintf(os.Stdout, "[API Gateway] GetChats: User %s not found (expected for deleted/invalid users)\n", participantID)
+				participantNames[participantID] = "Unknown"
+			} else {
+				fmt.Fprintf(os.Stderr, "[API Gateway] GetChats: gRPC error for user %s: %v (code: %v)\n", participantID, err, func() string {
+					if ok {
+						return st.Code().String()
+					}
+					return "unknown"
+				}())
+				participantNames[participantID] = "Unknown"
+			}
+			continue
+		}
+		if userRes == nil {
+			fmt.Fprintf(os.Stderr, "[API Gateway] GetChats: userRes is nil for user %s\n", participantID)
+			participantNames[participantID] = "Unknown"
+			continue
+		}
+		fmt.Fprintf(os.Stdout, "[API Gateway] GetChats: User response for %s - Success: %v, User: %+v\n", participantID, userRes.Success, userRes.User)
+		if userRes.Success && userRes.User != nil {
+			username := userRes.User.Username
+			if username == "" {
+				fmt.Fprintf(os.Stderr, "[API Gateway] GetChats: Username is empty for user %s\n", participantID)
+				participantNames[participantID] = "Unknown"
+			} else {
+				participantNames[participantID] = username
+				fmt.Fprintf(os.Stdout, "[API Gateway] GetChats: Fetched username for user %s: %s\n", participantID, username)
+			}
+		} else {
+			fmt.Fprintf(os.Stderr, "[API Gateway] GetChats: Failed to fetch username for user %s - Success: %v, User nil: %v\n", participantID, userRes.Success, userRes.User == nil)
+			participantNames[participantID] = "Unknown"
+		}
+	}
+	fmt.Fprintf(os.Stdout, "[API Gateway] GetChats: All participant names: %+v\n", participantNames)
+
 	var chats []dto.GetChatsResponse
 	for _, chat := range res.Chats {
-		chats = append(chats, dto.GetChatsResponse{
+		// For direct chats (not groups), set name to the other participant's username
+		chatName := chat.Name
+		if !chat.IsGroup && len(chat.OtherParticipantIds) > 0 {
+			// Get the first (and typically only) other participant's username
+			participantID := chat.OtherParticipantIds[0]
+			if username, ok := participantNames[participantID]; ok && username != "" {
+				chatName = username
+				fmt.Fprintf(os.Stdout, "[API Gateway] GetChats: Chat %s - setting name to participant username: %s\n", chat.ChatId, username)
+			} else {
+				chatName = "Unknown"
+				fmt.Fprintf(os.Stderr, "[API Gateway] GetChats: Chat %s - participant %s not found, using 'Unknown'\n", chat.ChatId, participantID)
+			}
+		}
+
+		chatResp := dto.GetChatsResponse{
 			ChatID:             chat.ChatId,
 			IsGroup:            chat.IsGroup,
-			Name:               chat.Name,
+			Name:               chatName,
 			OtherParticipantId: chat.OtherParticipantIds,
 			LastMessageAt:      chat.LastMessageAt,
 			CreatedAt:          chat.CreatedAt,
 			UpdatedAt:          chat.UpdatedAt,
-		})
+		}
+		fmt.Fprintf(os.Stdout, "[API Gateway] GetChats: Chat response - ChatID: %s, Name: %s\n", chatResp.ChatID, chatResp.Name)
+		chats = append(chats, chatResp)
 	}
+	fmt.Fprintf(os.Stdout, "[API Gateway] GetChats: Returning %d chats\n", len(chats))
+
+	// Debug: Print the JSON that will be sent
+	jsonBytes, _ := json.Marshal(chats)
+	fmt.Fprintf(os.Stdout, "[API Gateway] GetChats: JSON response: %s\n", string(jsonBytes))
+
 	return c.Status(fiber.StatusOK).JSON(contracts.Resp{
 		Success:    true,
 		StatusCode: fiber.StatusOK,
