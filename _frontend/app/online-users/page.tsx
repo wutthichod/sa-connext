@@ -230,11 +230,28 @@ export default function OnlineUsersPage() {
         }),
       });
 
+      console.log(
+        `[Online Users] Create chat response status:`,
+        createResponse.status
+      );
+
       const createData = await createResponse.json();
-      console.log(`[Online Users] Create chat response:`, createData);
+      console.log(
+        `[Online Users] Create chat response data:`,
+        JSON.stringify(createData, null, 2)
+      );
 
       if (!createResponse.ok) {
-        throw new Error(createData.error || "Failed to create chat");
+        console.error(`[Online Users] Create chat failed:`, {
+          status: createResponse.status,
+          statusText: createResponse.statusText,
+          error: createData.error,
+          fullResponse: createData,
+        });
+        throw new Error(
+          createData.error ||
+            `Failed to create chat (status: ${createResponse.status})`
+        );
       }
 
       if (createData.success && createData.data) {

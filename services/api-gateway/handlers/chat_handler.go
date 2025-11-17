@@ -125,7 +125,7 @@ func (h *ChatHandler) CreateChat(c *fiber.Ctx) error {
 		})
 	}
 
-	_, err := h.ChatClient.CreateChat(c.Context(), &pbChat.CreateChatRequest{
+	chatRes, err := h.ChatClient.CreateChat(c.Context(), &pbChat.CreateChatRequest{
 		SenderId:    senderID,
 		RecipientId: req.RecipientID,
 	})
@@ -135,6 +135,9 @@ func (h *ChatHandler) CreateChat(c *fiber.Ctx) error {
 
 	return c.Status(fiber.StatusCreated).JSON(contracts.Resp{
 		Success: true,
+		Data: map[string]interface{}{
+			"chat_id": chatRes.ChatId,
+		},
 	})
 }
 
