@@ -33,10 +33,19 @@ func main() {
 
 	log.Println("Logger middleware activated - all API calls will be logged")
 
+	// CORS configuration - allow access from same WiFi network
+	// Note: Using AllowOriginsFunc instead of AllowOrigins to allow credentials
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     "http://localhost:3000",
+		AllowOriginsFunc: func(origin string) bool {
+			// Allow all origins for WiFi network access
+			return true
+		},
 		AllowCredentials: true,
+		AllowHeaders:     "Origin, Content-Type, Accept, Authorization",
+		AllowMethods:     "GET, POST, PUT, DELETE, OPTIONS, PATCH",
 	}))
+
+	log.Println("CORS middleware configured - allowing access from any origin")
 
 	// Create gRPC Client
 	chatClient, _ := clients.NewChatServiceClient(config.App().Chat)

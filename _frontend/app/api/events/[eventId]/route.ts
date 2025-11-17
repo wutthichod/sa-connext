@@ -1,7 +1,6 @@
 // app/api/events/[eventId]/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-
-const BACKEND_URL = 'http://localhost:8080';
+import { NextRequest, NextResponse } from "next/server";
+import { BACKEND_URL } from "@/app/config";
 
 // GET - Get event by ID
 export async function GET(
@@ -12,47 +11,48 @@ export async function GET(
     // Handle both Promise and direct params (for different Next.js versions)
     const resolvedParams = params instanceof Promise ? await params : params;
     const { eventId } = resolvedParams;
-    
-    const token = request.headers.get('authorization')?.replace('Bearer ', '') || 
-                  request.cookies.get('token')?.value;
-    
+
+    const token =
+      request.headers.get("authorization")?.replace("Bearer ", "") ||
+      request.cookies.get("token")?.value;
+
     if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const response = await fetch(`${BACKEND_URL}/events/${eventId}`, {
-      method: 'GET',
+      method: "GET",
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
       },
     });
 
-    const contentType = response.headers.get('content-type') || '';
+    const contentType = response.headers.get("content-type") || "";
     let data: any;
 
-    if (contentType.includes('application/json')) {
+    if (contentType.includes("application/json")) {
       data = await response.json();
     } else {
       const text = await response.text();
       return NextResponse.json(
-        { error: 'Invalid response from server' },
+        { error: "Invalid response from server" },
         { status: 500 }
       );
     }
 
     if (!response.ok) {
       return NextResponse.json(
-        { error: data.message || data.error || 'Failed to fetch event' },
+        { error: data.message || data.error || "Failed to fetch event" },
         { status: response.status }
       );
     }
 
     return NextResponse.json(data);
   } catch (error: any) {
-    console.error('Get event API error:', error);
+    console.error("Get event API error:", error);
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
+      { error: error.message || "Internal server error" },
       { status: 500 }
     );
   }
@@ -67,49 +67,49 @@ export async function DELETE(
     // Handle both Promise and direct params (for different Next.js versions)
     const resolvedParams = params instanceof Promise ? await params : params;
     const { eventId } = resolvedParams;
-    
-    const token = request.headers.get('authorization')?.replace('Bearer ', '') || 
-                  request.cookies.get('token')?.value;
-    
+
+    const token =
+      request.headers.get("authorization")?.replace("Bearer ", "") ||
+      request.cookies.get("token")?.value;
+
     if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const response = await fetch(`${BACKEND_URL}/events/${eventId}`, {
-      method: 'DELETE',
+      method: "DELETE",
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
       },
     });
 
-    const contentType = response.headers.get('content-type') || '';
+    const contentType = response.headers.get("content-type") || "";
     let data: any;
 
-    if (contentType.includes('application/json')) {
+    if (contentType.includes("application/json")) {
       data = await response.json();
     } else {
       const text = await response.text();
       return NextResponse.json(
-        { error: 'Invalid response from server' },
+        { error: "Invalid response from server" },
         { status: 500 }
       );
     }
 
     if (!response.ok) {
       return NextResponse.json(
-        { error: data.message || data.error || 'Failed to delete event' },
+        { error: data.message || data.error || "Failed to delete event" },
         { status: response.status }
       );
     }
 
     return NextResponse.json(data);
   } catch (error: any) {
-    console.error('Delete event API error:', error);
+    console.error("Delete event API error:", error);
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
+      { error: error.message || "Internal server error" },
       { status: 500 }
     );
   }
 }
-

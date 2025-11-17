@@ -1,7 +1,6 @@
 // app/api/chats/users/route.ts
 import { NextRequest, NextResponse } from "next/server";
-
-const BACKEND_URL = "http://localhost:8080";
+import { BACKEND_URL } from "@/app/config";
 
 // GET - Get all online users
 export async function GET(request: NextRequest) {

@@ -68,7 +68,7 @@ k8s_yaml([
     'infra/k8s/event-service.yaml',
     
     # Gateway
-    'infra/k8s/api-gateway-deployment.yaml',
+    'infra/k8s/api-gateway-deployment.yaml', 
     'infra/k8s/api-gateway-service.yaml',
 ])
 
@@ -172,7 +172,11 @@ k8s_resource(
     workload='api-gateway-deployment',
     new_name='API Gateway',
     resource_deps=['User Service', 'Chat Service', 'Event Service', 'RabbitMQ', 'App Config & Secrets'],
-    port_forwards=8080,
     labels='Gateway',
     pod_readiness='wait'
 )
+
+# Note: Use NodePort 30080 for network access
+# For WiFi network access, the API Gateway is available at:
+# - http://<YOUR_IP>:30080 from other devices
+# - http://localhost:30080 from this machine
