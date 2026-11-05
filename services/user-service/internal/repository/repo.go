@@ -14,6 +14,7 @@ type Repository interface {
 	GetUserById(ctx context.Context, userId uint) (*models.User, error)
 	GetUsersByEventId(ctx context.Context, eventId uint) ([]*models.User, error)
 	AddUserToEvent(ctx context.Context, eventId, userId uint) error
+	LeaveEvent(ctx context.Context, userId uint) error
 	UpdateUser(ctx context.Context, userId uint, user *models.User) (*models.User, error)
 }
 
@@ -72,6 +73,10 @@ func (r *repository) GetUsersByEventId(ctx context.Context, eventId uint) ([]*mo
 
 func (r *repository) AddUserToEvent(ctx context.Context, eventId, userId uint) error {
 	return r.db.WithContext(ctx).Model(&models.User{}).Where("id = ?", userId).Update("current_event_id", eventId).Error
+}
+
+func (r *repository) LeaveEvent(ctx context.Context, userId uint) error {
+	return r.db.WithContext(ctx).Model(&models.User{}).Where("id = ?", userId).Update("current_event_id", 0).Error
 }
 
 func (r *repository) UpdateUser(ctx context.Context, userId uint, user *models.User) (*models.User, error) {

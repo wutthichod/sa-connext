@@ -25,6 +25,7 @@ type Service interface {
 	GetUserById(ctx context.Context, pbReq *pb.GetUserByIdRequest) (*pb.GetUserByIdResponse, error)
 	GetUsersByEventId(ctx context.Context, pbReq *pb.GetUsersByEventIdRequest) (*pb.GetUsersByEventIdResponse, error)
 	AddUserToEvent(ctx context.Context, pbReq *pb.AddUserToEventRequest) (*pb.AddUserToEventResponse, error)
+	LeaveEvent(ctx context.Context, pbReq *pb.LeaveEventRequest) (*pb.LeaveEventResponse, error)
 	UpdateUser(ctx context.Context, pbReq *pb.UpdateUserRequest) (*pb.UpdateUserResponse, error)
 }
 
@@ -176,6 +177,23 @@ func (s *service) AddUserToEvent(ctx context.Context, pbReq *pb.AddUserToEventRe
 		return nil, grpcerrors.DatabaseError(err.Error())
 	}
 	return &pb.AddUserToEventResponse{
+		Success: true,
+	}, nil
+}
+
+func (s *service) LeaveEvent(ctx context.Context, pbReq *pb.LeaveEventRequest) (*pb.LeaveEventResponse, error) {
+	userId, err := strconv.ParseUint(pbReq.UserId, 10, 64)
+	if err != nil {
+		return nil, grpcerrors.InvalidInput("invalid user ID format", map[string]string{
+			"field": "user_id",
+			"value": pbReq.UserId,
+		})
+	}
+	err = s.repo.LeaveEvent(ctx, uint(userId))
+	if err != nil {
+		return nil, grpcerrors.DatabaseError(err.Error())
+	}
+	return &pb.LeaveEventResponse{
 		Success: true,
 	}, nil
 }

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -18,12 +19,12 @@ type RouteDefinition struct {
 }
 
 var routes = map[string]RouteDefinition{
-	"createEvent":  {Method: "POST", Path: "/events/"},
-	"getEvent":     {Method: "GET", Path: "/events/%s"},
-	"getAllEvents": {Method: "GET", Path: "/events/"},
-	"joinEvent":    {Method: "POST", Path: "/events/join"},
+	"createEvent":       {Method: "POST", Path: "/events/"},
+	"getEvent":          {Method: "GET", Path: "/events/%s"},
+	"getAllEvents":      {Method: "GET", Path: "/events/"},
+	"joinEvent":         {Method: "POST", Path: "/events/join"},
 	"getEventsByUserID": {Method: "GET", Path: "/events/users/%s"},
-	"deleteEvent": {Method: "DELETE", Path: "/events/%s"},
+	"deleteEvent":       {Method: "DELETE", Path: "/events/%s"},
 }
 
 type EventServiceClient struct {
@@ -71,9 +72,23 @@ func (c *EventServiceClient) CreateEvent(ctx context.Context, req *contracts.Cre
 
 	defer resp.Body.Close()
 
+	// Read body first so we can use it for error messages if needed
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body (status %d): %w", resp.StatusCode, err)
+	}
+
 	var createEventResp contracts.Resp
-	if err := json.NewDecoder(resp.Body).Decode(&createEventResp); err != nil {
-		return nil, fmt.Errorf("failed to decode response body: %w", err)
+	if err := json.Unmarshal(bodyBytes, &createEventResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response body (status %d): %w, body: %s", resp.StatusCode, err, string(bodyBytes))
+	}
+
+	// Ensure status code is set from HTTP response
+	createEventResp.StatusCode = resp.StatusCode
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		createEventResp.Success = true
+	} else {
+		createEventResp.Success = false
 	}
 
 	return &createEventResp, nil
@@ -140,7 +155,7 @@ func (c *EventServiceClient) GetAllEvents(ctx context.Context) (*contracts.Resp,
 func (c *EventServiceClient) JoinEvent(ctx context.Context, req *contracts.JoinEventRequest) (*contracts.Resp, error) {
 	route, ok := routes["joinEvent"]
 	if !ok {
-		return nil, fmt.Errorf("route 'createEvent' not defined")
+		return nil, fmt.Errorf("route 'joinEvent' not defined")
 	}
 
 	reqBodyBytes, err := json.Marshal(req)
@@ -163,17 +178,31 @@ func (c *EventServiceClient) JoinEvent(ctx context.Context, req *contracts.JoinE
 
 	defer resp.Body.Close()
 
-	var createEventResp contracts.Resp
-	if err := json.NewDecoder(resp.Body).Decode(&createEventResp); err != nil {
-		return nil, fmt.Errorf("failed to decode response body: %w", err)
+	// Read body first so we can use it for error messages if needed
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body (status %d): %w", resp.StatusCode, err)
 	}
 
-	return &createEventResp, nil
+	var joinEventResp contracts.Resp
+	if err := json.Unmarshal(bodyBytes, &joinEventResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response body (status %d): %w, body: %s", resp.StatusCode, err, string(bodyBytes))
+	}
+
+	// Ensure status code is set from HTTP response
+	joinEventResp.StatusCode = resp.StatusCode
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		joinEventResp.Success = true
+	} else {
+		joinEventResp.Success = false
+	}
+
+	return &joinEventResp, nil
 }
 
 func (c *EventServiceClient) GetEventsByUserID(ctx context.Context, userID string) (*contracts.Resp, error) {
 	route, ok := routes["getEventsByUserID"]
-	if !ok {	
+	if !ok {
 		return nil, fmt.Errorf("route 'getEventsByUserID' not defined")
 	}
 	url := fmt.Sprintf(c.addr+route.Path, userID)

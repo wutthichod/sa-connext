@@ -10,6 +10,7 @@ service UserService {
     rpc GetUserById(GetUserByIdRequest) returns (GetUserByIdResponse);
     rpc GetUsersByEventId(GetUsersByEventIdRequest) returns (GetUsersByEventIdResponse);
     rpc AddUserToEvent(AddUserToEventRequest) returns (AddUserToEventResponse);
+    rpc LeaveEvent(LeaveEventRequest) returns (LeaveEventResponse);
     rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
 }
 
@@ -62,6 +63,14 @@ message AddUserToEventRequest {
 }
 
 message AddUserToEventResponse {
+    bool success = 1;
+}
+
+message LeaveEventRequest {
+    string user_id = 1;
+}
+
+message LeaveEventResponse {
     bool success = 1;
 }
 

@@ -1,0 +1,12 @@
+FROM mongo:7
+
+# Creates the chat-db application user on first start.
+# Needs: MONGO_INITDB_ROOT_USERNAME, MONGO_INITDB_ROOT_PASSWORD,
+#        MONGO_APP_USER, MONGO_APP_PASSWORD (optional MONGO_APP_DB, default chat-db)
+COPY infra/mongo/init-chat-db.sh /docker-entrypoint-initdb.d/10-init-chat-db.sh
+RUN chmod 755 /docker-entrypoint-initdb.d/10-init-chat-db.sh
+
+EXPOSE 27017
+
+HEALTHCHECK --interval=10s --timeout=5s --retries=5 \
+  CMD mongosh --quiet --eval "db.adminCommand('ping').ok" | grep -q 1

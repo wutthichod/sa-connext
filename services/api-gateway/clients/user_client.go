@@ -56,6 +56,10 @@ func (c *UserServiceClient) AddUserToEvent(ctx context.Context, req *pb.AddUserT
 	return c.Client.AddUserToEvent(ctx, req)
 }
 
+func (c *UserServiceClient) LeaveEvent(ctx context.Context, req *pb.LeaveEventRequest) (*pb.LeaveEventResponse, error) {
+	return c.Client.LeaveEvent(ctx, req)
+}
+
 func (c *UserServiceClient) UpdateUser(ctx context.Context, req *pb.UpdateUserRequest) (*pb.UpdateUserResponse, error) {
 	return c.Client.UpdateUser(ctx, req)
 }

@@ -54,8 +54,6 @@ build: $(BINARIES)
 # 2. Target to run all programs concurrently
 run: build
 	@echo "\n--- Running all compiled services concurrently ---"
-	@echo "Starting $(SERVICE_A_NAME)..."
-	./$(BIN_A) &
 	@echo "Starting $(SERVICE_B_NAME) (Cobra)..."
 	./$(BIN_B) serve &
 	@echo "Starting $(SERVICE_C_NAME)..."
@@ -64,6 +62,10 @@ run: build
 	./$(BIN_D) &
 	@echo "Starting $(SERVICE_E_NAME)..."
 	./$(BIN_E) &
+	@# Gateway last: it consumes the chat_gateway queue that chat-service declares on startup.
+	@sleep 3
+	@echo "Starting $(SERVICE_A_NAME)..."
+	./$(BIN_A) &
 	@echo "\nAll services started. Press Ctrl+C to stop."
 	@wait
 

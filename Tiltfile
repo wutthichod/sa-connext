@@ -42,6 +42,13 @@ docker_build(
     only=['shared/', 'services/notification-service/', 'go.mod', 'go.sum']
 )
 
+docker_build(
+    'connext-mongo:latest',
+    '.',
+    dockerfile='infra/dockerfile/mongo',
+    only=['infra/mongo/']
+)
+
 # ============================================================================
 # Kubernetes Manifests
 # k8s_yaml() automatically watches these files for changes
@@ -54,6 +61,7 @@ k8s_yaml([
     'infra/k8s/db-secrets.yaml',
     'infra/k8s/postgres-db.yaml',
     'infra/k8s/pgadmin-db.yaml',
+    'infra/k8s/messaging-and-mongo.yaml',
     
     # Services - Deployments
     'infra/k8s/user-service-deployment.yaml',

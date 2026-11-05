@@ -52,7 +52,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-
+/_frontend/
 
 # Tilt build
 build/

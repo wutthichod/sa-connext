@@ -16,7 +16,7 @@ type SendMessageRequest struct {
 type GetChatsResponse struct {
 	ChatID             string   `json:"chat_id"`
 	IsGroup            bool     `json:"is_group"`
-	Name               string   `json:"name"`
+	Name               string   `json:"name"` // For direct chats, this will be the other participant's username
 	OtherParticipantId []string `json:"other_participants_id"`
 	LastMessageAt      string   `json:"last_message_at"`
 	CreatedAt          string   `json:"created_at"`

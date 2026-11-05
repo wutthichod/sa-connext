@@ -70,6 +70,14 @@ func (h *gRPCHandler) AddUserToEvent(ctx context.Context, req *pb.AddUserToEvent
 	return result, nil
 }
 
+func (h *gRPCHandler) LeaveEvent(ctx context.Context, req *pb.LeaveEventRequest) (*pb.LeaveEventResponse, error) {
+	result, err := h.service.LeaveEvent(ctx, req)
+	if err != nil {
+		return nil, grpcerrors.HandleError(err)
+	}
+	return result, nil
+}
+
 func (h *gRPCHandler) UpdateUser(ctx context.Context, req *pb.UpdateUserRequest) (*pb.UpdateUserResponse, error) {
 	result, err := h.service.UpdateUser(ctx, req)
 	if err != nil {
