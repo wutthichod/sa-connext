@@ -3,7 +3,11 @@ kind: Deployment
 metadata:
   name: api-gateway-deployment
 spec:
-  replicas: 3
+  # NET-1 presence and WebSocket connections are held in this process.
+  # Multiple replicas require shared presence and per-gateway message delivery.
+  replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: api-gateway

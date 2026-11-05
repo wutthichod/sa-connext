@@ -25,12 +25,17 @@ services:
     restart: unless-stopped
 
   rabbitmq:
-    image: rabbitmq:3-management
+    image: rabbitmq:4.1.4-management
     container_name: rabbitmq
     ports:
       - "5672:5672"
       - "15672:15672"   # management UI (guest/guest)
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
 
   mongo:
     build:

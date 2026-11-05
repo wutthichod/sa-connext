@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -32,10 +33,19 @@ func main() {
 
 	log.Println("Logger middleware activated - all API calls will be logged")
 
+	// CORS configuration - allow access from same WiFi network
+	// Note: Using AllowOriginsFunc instead of AllowOrigins to allow credentials
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     "http://localhost:3000",
+		AllowOriginsFunc: func(origin string) bool {
+			// Allow all origins for WiFi network access
+			return true
+		},
 		AllowCredentials: true,
+		AllowHeaders:     "Origin, Content-Type, Accept, Authorization",
+		AllowMethods:     "GET, POST, PUT, DELETE, OPTIONS, PATCH",
 	}))
+
+	log.Println("CORS middleware configured - allowing access from any origin")
 
 	// Create gRPC Client
 	chatClient, _ := clients.NewChatServiceClient(config.App().Chat)
@@ -47,9 +57,18 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer rabbit.Close()
+
+	// Setup exchange + queue for consuming messages from chat service
+	queueName := "chat_gateway"
+	log.Printf("Setting up RabbitMQ queue: %s", queueName)
+	_, err = rabbit.SetupQueue(queueName, "chat", "direct", "chat.gateway", true, nil)
+	if err != nil {
+		log.Fatalf("Failed to setup RabbitMQ queue: %v", err)
+	}
+	log.Printf("RabbitMQ queue setup successful: %s", queueName)
 
 	connMgr := messaging.NewConnectionManager()
-	queueName := "chat_gateway"
 	consumer := messaging.NewQueueConsumer(rabbit, connMgr, queueName)
 
 	// Initialize ChatHandler
@@ -62,9 +81,18 @@ func main() {
 	userHandler.RegisterRoutes(app)
 	eventHandler.RegisterRoutes(app)
 
+	log.Printf("Starting HTTP server on: %s", config.App().Gateway)
+
 	go func() {
-		chatHandler.ListenRabbit()
+		log.Fatal(app.Listen(config.App().Gateway))
 	}()
 
-	log.Fatal(app.Listen(config.App().Gateway))
+	log.Printf("Waiting for HTTP server to initialize...")
+	time.Sleep(2 * time.Second)
+
+	chatHandler.ListenRabbit()
+
+	log.Printf("API Gateway fully initialized - HTTP server and RabbitMQ consumer are ready")
+
+	select {}
 }

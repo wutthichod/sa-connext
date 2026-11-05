@@ -26,16 +26,7 @@ var setupCmd = &cobra.Command{
 
 		// TODO: run migrations
 		// db.Migrator().DropTable(&models.Province{},&models.District{},&models.SubDistrict{})
-		err = db.Migrator().DropTable(
-			&models.User{},
-			&models.Contact{},
-			&models.Education{},
-			&models.Interest{},
-		)
-		if err != nil {
-			log.Fatalf("failed to drop tables: %v", err)
-		}
-		log.Println("All tables dropped successfully")
+		log.Println("Migrating user tables without dropping existing data")
 		err = db.AutoMigrate(
 			&models.User{},
 			&models.Contact{},

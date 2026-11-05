@@ -1,0 +1,2 @@
+# MongoDB runs initialization scripts inside a Linux container.
+*.sh text eol=lf

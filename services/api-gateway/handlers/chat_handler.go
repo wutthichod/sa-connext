@@ -1,10 +1,9 @@
 package handlers
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
 	"log"
-	"os"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
@@ -16,7 +15,7 @@ import (
 	"github.com/wutthichod/sa-connext/shared/config"
 	"github.com/wutthichod/sa-connext/shared/contracts"
 	"github.com/wutthichod/sa-connext/shared/messaging"
-	pb "github.com/wutthichod/sa-connext/shared/proto/chat"
+	pbChat "github.com/wutthichod/sa-connext/shared/proto/chat"
 	pbUser "github.com/wutthichod/sa-connext/shared/proto/user"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -51,6 +50,7 @@ func (h *ChatHandler) RegisterRoutes(app *fiber.App) {
 	chatRoutes.Get("/ws/", middlewares.JWTMiddleware(*h.Config), websocket.New(h.WebSocketHandler))
 	chatRoutes.Get("/", middlewares.JWTMiddleware(*h.Config), h.GetChats)
 	chatRoutes.Get("/:id/messages", middlewares.JWTMiddleware(*h.Config), h.GetChatMessagesByChatId)
+	chatRoutes.Get("/users", middlewares.JWTMiddleware(*h.Config), h.GetOnlineUsers)
 }
 
 // WebSocket handler extracted for clarity
@@ -58,54 +58,86 @@ func (h *ChatHandler) WebSocketHandler(c *websocket.Conn) {
 	userID := c.Locals("userID").(uint)
 	userIDStr := strconv.FormatUint(uint64(userID), 10)
 
+	log.Printf("WebSocket connection established for user: %s (ID: %d)", userIDStr, userID)
 	h.ConnManager.Add(userIDStr, c)
-	defer h.ConnManager.Remove(userIDStr)
+	
+	// Get user details for broadcast
+	ctx := context.Background()
+	userRes, err := h.UserClient.GetUserByID(ctx, &pbUser.GetUserByIdRequest{
+		UserId: userIDStr,
+	})
+	
+	// Broadcast user joined event to all users
+	if err == nil && userRes.Success {
+		user := userRes.GetUser()
+		h.ConnManager.BroadcastToAll(contracts.WSMessage{
+			Type: "user_joined",
+			Data: map[string]interface{}{
+				"user_id":  userIDStr,
+				"username": user.GetUsername(),
+				"email":    user.GetContact().GetEmail(),
+			},
+		})
+		log.Printf("Broadcasted user_joined event for user: %s", userIDStr)
+	}
+	
+	defer func() {
+		log.Printf("WebSocket connection closing for user: %s", userIDStr)
+		h.ConnManager.Remove(userIDStr)
+		
+		// Broadcast user left event to all remaining users
+		h.ConnManager.BroadcastToAll(contracts.WSMessage{
+			Type: "user_left",
+			Data: map[string]interface{}{
+				"user_id": userIDStr,
+			},
+		})
+		log.Printf("Broadcasted user_left event for user: %s", userIDStr)
+	}()
 
+	log.Printf("WebSocket connection active, waiting for messages from user: %s", userIDStr)
 	// Keep connection alive
 	for {
 		if _, _, err := c.ReadMessage(); err != nil {
+			log.Printf("WebSocket read error for user %s: %v", userIDStr, err)
 			break
 		}
 	}
+	log.Printf("WebSocket connection ended for user: %s", userIDStr)
 }
 
 func (h *ChatHandler) CreateChat(c *fiber.Ctx) error {
 	senderID_uint := c.Locals("userID").(uint)
 	senderID := strconv.FormatUint(uint64(senderID_uint), 10)
-	fmt.Fprintf(os.Stdout, "[API Gateway] CreateChat: Sender ID (uint): %d, Sender ID (string): %s\n", senderID_uint, senderID)
 
 	var req dto.CreateChatRequest
 	if err := c.BodyParser(&req); err != nil {
-		fmt.Fprintf(os.Stderr, "[API Gateway] CreateChat: Failed to parse request body: %v\n", err)
 		return c.Status(fiber.StatusBadRequest).JSON(contracts.Resp{
 			Success: false,
 			Message: "invalid json format",
 		})
 	}
 
-	fmt.Fprintf(os.Stdout, "[API Gateway] CreateChat: Request body - RecipientID: %s (type: %T)\n", req.RecipientID, req.RecipientID)
-
 	if req.RecipientID == "" {
-		fmt.Fprintf(os.Stderr, "[API Gateway] CreateChat: RecipientID is empty\n")
 		return c.Status(fiber.StatusBadRequest).JSON(contracts.Resp{
 			Success: false,
 			Message: "required recipientID",
 		})
 	}
 
-	fmt.Fprintf(os.Stdout, "[API Gateway] CreateChat: Creating chat with SenderId: %s, RecipientId: %s\n", senderID, req.RecipientID)
-	_, err := h.ChatClient.CreateChat(c.Context(), &pb.CreateChatRequest{
+	chatRes, err := h.ChatClient.CreateChat(c.Context(), &pbChat.CreateChatRequest{
 		SenderId:    senderID,
 		RecipientId: req.RecipientID,
 	})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[API Gateway] CreateChat: Error from chat service: %v\n", err)
 		return errors.HandleGRPCError(c, err)
 	}
 
-	fmt.Fprintf(os.Stdout, "[API Gateway] CreateChat: Chat created successfully\n")
 	return c.Status(fiber.StatusCreated).JSON(contracts.Resp{
 		Success: true,
+		Data: map[string]interface{}{
+			"chat_id": chatRes.ChatId,
+		},
 	})
 }
 
@@ -127,7 +159,7 @@ func (h *ChatHandler) CreateGroup(c *fiber.Ctx) error {
 		})
 	}
 
-	_, err := h.ChatClient.CreateGroup(c.Context(), &pb.CreateGroupRequest{
+	res, err := h.ChatClient.CreateGroup(c.Context(), &pbChat.CreateGroupRequest{
 		SenderId:  senderID,
 		GroupName: req.GroupName,
 	})
@@ -136,6 +168,9 @@ func (h *ChatHandler) CreateGroup(c *fiber.Ctx) error {
 	}
 	return c.Status(fiber.StatusCreated).JSON(contracts.Resp{
 		Success: true,
+		Data: map[string]string{
+			"chat_id": res.ChatId,
+		},
 	})
 }
 
@@ -145,7 +180,7 @@ func (h *ChatHandler) JoinGroup(c *fiber.Ctx) error {
 
 	chatID := c.Params("id")
 
-	_, err := h.ChatClient.JoinGroup(c.Context(), &pb.JoinGroupRequest{
+	_, err := h.ChatClient.JoinGroup(c.Context(), &pbChat.JoinGroupRequest{
 		UserId: userID,
 		ChatId: chatID,
 	})
@@ -176,7 +211,7 @@ func (h *ChatHandler) SendMessage(c *fiber.Ctx) error {
 		})
 	}
 
-	_, err := h.ChatClient.SendMessage(c.Context(), &pb.SendMessageRequest{
+	_, err := h.ChatClient.SendMessage(c.Context(), &pbChat.SendMessageRequest{
 		SenderId: senderID,
 		ChatId:   req.ChatID,
 		Message:  req.Message,
@@ -193,7 +228,7 @@ func (h *ChatHandler) SendMessage(c *fiber.Ctx) error {
 // Get chats by user id
 func (h *ChatHandler) GetChats(c *fiber.Ctx) error {
 	userID := c.Locals("userID").(uint)
-	res, err := h.ChatClient.GetChats(c.Context(), &pb.GetChatsRequest{
+	res, err := h.ChatClient.GetChats(c.Context(), &pbChat.GetChatsRequest{
 		UserId: fmt.Sprintf("%d", userID),
 	})
 	if err != nil {
@@ -216,7 +251,6 @@ func (h *ChatHandler) GetChats(c *fiber.Ctx) error {
 	// Fetch usernames for all participants
 	participantNames := make(map[string]string)
 	for participantID := range participantIDs {
-		fmt.Fprintf(os.Stdout, "[API Gateway] GetChats: Attempting to fetch user %s\n", participantID)
 		userRes, err := h.UserClient.GetUserByID(c.Context(), &pbUser.GetUserByIdRequest{
 			UserId: participantID,
 		})
@@ -224,40 +258,27 @@ func (h *ChatHandler) GetChats(c *fiber.Ctx) error {
 			// Check if it's a "not found" error - this is expected for some users
 			st, ok := status.FromError(err)
 			if ok && st.Code() == codes.NotFound {
-				fmt.Fprintf(os.Stdout, "[API Gateway] GetChats: User %s not found (expected for deleted/invalid users)\n", participantID)
 				participantNames[participantID] = "Unknown"
 			} else {
-				fmt.Fprintf(os.Stderr, "[API Gateway] GetChats: gRPC error for user %s: %v (code: %v)\n", participantID, err, func() string {
-					if ok {
-						return st.Code().String()
-					}
-					return "unknown"
-				}())
 				participantNames[participantID] = "Unknown"
 			}
 			continue
 		}
 		if userRes == nil {
-			fmt.Fprintf(os.Stderr, "[API Gateway] GetChats: userRes is nil for user %s\n", participantID)
 			participantNames[participantID] = "Unknown"
 			continue
 		}
-		fmt.Fprintf(os.Stdout, "[API Gateway] GetChats: User response for %s - Success: %v, User: %+v\n", participantID, userRes.Success, userRes.User)
 		if userRes.Success && userRes.User != nil {
 			username := userRes.User.Username
 			if username == "" {
-				fmt.Fprintf(os.Stderr, "[API Gateway] GetChats: Username is empty for user %s\n", participantID)
 				participantNames[participantID] = "Unknown"
 			} else {
 				participantNames[participantID] = username
-				fmt.Fprintf(os.Stdout, "[API Gateway] GetChats: Fetched username for user %s: %s\n", participantID, username)
 			}
 		} else {
-			fmt.Fprintf(os.Stderr, "[API Gateway] GetChats: Failed to fetch username for user %s - Success: %v, User nil: %v\n", participantID, userRes.Success, userRes.User == nil)
 			participantNames[participantID] = "Unknown"
 		}
 	}
-	fmt.Fprintf(os.Stdout, "[API Gateway] GetChats: All participant names: %+v\n", participantNames)
 
 	var chats []dto.GetChatsResponse
 	for _, chat := range res.Chats {
@@ -268,10 +289,8 @@ func (h *ChatHandler) GetChats(c *fiber.Ctx) error {
 			participantID := chat.OtherParticipantIds[0]
 			if username, ok := participantNames[participantID]; ok && username != "" {
 				chatName = username
-				fmt.Fprintf(os.Stdout, "[API Gateway] GetChats: Chat %s - setting name to participant username: %s\n", chat.ChatId, username)
 			} else {
 				chatName = "Unknown"
-				fmt.Fprintf(os.Stderr, "[API Gateway] GetChats: Chat %s - participant %s not found, using 'Unknown'\n", chat.ChatId, participantID)
 			}
 		}
 
@@ -284,14 +303,8 @@ func (h *ChatHandler) GetChats(c *fiber.Ctx) error {
 			CreatedAt:          chat.CreatedAt,
 			UpdatedAt:          chat.UpdatedAt,
 		}
-		fmt.Fprintf(os.Stdout, "[API Gateway] GetChats: Chat response - ChatID: %s, Name: %s\n", chatResp.ChatID, chatResp.Name)
 		chats = append(chats, chatResp)
 	}
-	fmt.Fprintf(os.Stdout, "[API Gateway] GetChats: Returning %d chats\n", len(chats))
-
-	// Debug: Print the JSON that will be sent
-	jsonBytes, _ := json.Marshal(chats)
-	fmt.Fprintf(os.Stdout, "[API Gateway] GetChats: JSON response: %s\n", string(jsonBytes))
 
 	return c.Status(fiber.StatusOK).JSON(contracts.Resp{
 		Success:    true,
@@ -306,7 +319,7 @@ func (h *ChatHandler) GetChatMessagesByChatId(c *fiber.Ctx) error {
 	if chatID == "" {
 		return fiber.NewError(fiber.StatusBadRequest, "Chat ID is required")
 	}
-	res, err := h.ChatClient.GetChatMessagesByChatId(c.Context(), &pb.GetMessagesByChatIdRequest{
+	res, err := h.ChatClient.GetChatMessagesByChatId(c.Context(), &pbChat.GetMessagesByChatIdRequest{
 		ChatId: chatID,
 	})
 	if err != nil {
@@ -333,7 +346,44 @@ func (h *ChatHandler) GetChatMessagesByChatId(c *fiber.Ctx) error {
 
 // Start RabbitMQ consumer
 func (h *ChatHandler) ListenRabbit() {
-	if err := h.Queue.Start(); err != nil {
-		log.Fatal("Failed to start RabbitMQ consumer:", err)
+	log.Printf("Starting RabbitMQ consumer...")
+	go func() {
+		if err := h.Queue.Start(); err != nil {
+			log.Fatalf("ERROR: Failed to start RabbitMQ consumer: %v", err)
+		}
+	}()
+	log.Printf("RabbitMQ consumer started successfully")
+}
+
+func (h *ChatHandler) GetOnlineUsers(c *fiber.Ctx) error {
+	ctx := c.Context()
+	onlineUsers := h.ConnManager.GetAllUserIDs()
+
+	response := contracts.OnlineUsersRes{
+		OnlineUsers: []contracts.OnlineUser{},
 	}
+
+	for _, userID := range onlineUsers {
+		res, err := h.UserClient.GetUserByID(ctx, &pbUser.GetUserByIdRequest{
+			UserId: userID,
+		})
+		if err != nil {
+			return errors.HandleGRPCError(c, err)
+		}
+		if !res.Success {
+			return errors.HandleGRPCError(c, err)
+		}
+		
+		user := res.GetUser()
+		response.OnlineUsers = append(response.OnlineUsers, contracts.OnlineUser{
+			UserID:   userID,
+			Username: user.GetUsername(),
+			Email:    user.GetContact().GetEmail(),
+		})
+	}
+	
+	return c.Status(fiber.StatusOK).JSON(contracts.Resp{
+		Success: true,
+		Data:    response,
+	})
 }
