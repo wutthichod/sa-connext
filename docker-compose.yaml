@@ -24,5 +24,32 @@ services:
       - postgres_new
     restart: unless-stopped
 
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"   # management UI (guest/guest)
+    restart: unless-stopped
+
+  mongo:
+    build:
+      context: .
+      dockerfile: infra/dockerfile/mongo
+    image: connext-mongo:latest
+    container_name: mongo
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: rootpassword
+      MONGO_APP_DB: chat-db
+      MONGO_APP_USER: chatuser
+      MONGO_APP_PASSWORD: chatpassword
+    volumes:
+      - my_mongo_data:/data/db
+    ports:
+      - "27017:27017"
+    restart: unless-stopped
+
 volumes:
   my_postgres_data:
+  my_mongo_data:
